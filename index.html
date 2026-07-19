@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Togo Éducation — Accueil</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --vert: #006A4E; --vert-fonce: #004D3A; --vert-nuit: #002B20; --vert-clair: #E8F5E9;
+  --or: #FFCE00; --rouge: #EF3340; --bleu: #0033A0; --rose: #D53F8C;
+  --gris-bg: #F0F2F5; --gris-texte: #4A5568; --gris-mute: #A0AEC0;
+  --encre: #1A202C;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  --shadow-lg: 0 12px 40px rgba(0,43,32,0.16);
+  --radius: 10px; --radius-sm: 7px;
+  --container: 1180px;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--gris-bg); color: var(--encre); line-height: 1.5; }
+.container { max-width: var(--container); margin: 0 auto; padding: 0 28px; }
+
+/* =============== HEADER =============== */
+.header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 62px;
+  display: flex; align-items: center; padding: 0 28px;
+  background: rgba(0, 43, 32, 0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.3s;
+}
+.header.solid { background: rgba(0, 43, 32, 0.92); }
+.brand { display: flex; align-items: center; gap: 11px; color: white; text-decoration: none; }
+.flag-bar {
+  width: 36px; height: 25px; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3); position: relative; flex-shrink: 0;
+}
+.flag-bar .stripe { flex: 1; }
+.flag-bar .stripe.green { background: #006A4E; }
+.flag-bar .stripe.yellow { background: #FFCE00; }
+.flag-bar .stripe.red { background: #EF3340; }
+.flag-bar .star { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: white; font-size: 11px; text-shadow: 0 0 3px rgba(0,0,0,0.4); }
+.brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+.brand-name small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 2.2px; text-transform: uppercase; color: var(--or); margin-top: 1px; }
+.header-spacer { flex: 1; }
+.header-nav { display: flex; align-items: center; gap: 22px; }
+.header-nav a.nav-link { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.2s; }
+.header-nav a.nav-link:hover { color: white; }
+.btn-dash {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px;
+  background: var(--or); color: var(--vert-nuit); font-size: 13px; font-weight: 700; text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 3px 14px rgba(255,206,0,0.25);
+}
+.btn-dash:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,206,0,0.35); }
+.btn-dash i { font-size: 12px; }
+.theme-btn {
+  width: 36px; height: 36px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);
+  background: transparent; color: white; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+}
+.theme-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--or); color: var(--or); }
+
+/* =============== HERO / CARROUSEL =============== */
+.hero { position: relative; height: min(88vh, 780px); min-height: 560px; overflow: hidden; background: var(--vert-nuit); }
+.slide {
+  position: absolute; inset: 0; opacity: 0; visibility: hidden; z-index: 1;
+  transition: opacity 0.9s ease, visibility 0.9s;
+  display: flex; align-items: center;
+}
+.slide.active { opacity: 1; visibility: visible; z-index: 2; }
+
+/* Fonds de slide */
+.slide-bg { position: absolute; inset: 0; pointer-events: none; }
+.slide-bg .star-mark {
+  position: absolute; right: -6%; bottom: -18%; font-size: 460px; color: rgba(255,255,255,0.025);
+  transform: rotate(-12deg); line-height: 1;
+}
+.bg-1 { background: radial-gradient(1100px 600px at 78% 22%, rgba(0,138,102,0.55) 0%, transparent 60%), linear-gradient(118deg, #001d17 0%, #003D2E 46%, #00553F 100%); }
+.bg-2 { background: radial-gradient(900px 700px at 22% 80%, rgba(0,120,94,0.5) 0%, transparent 62%), linear-gradient(118deg, #00231b 0%, #00402f 52%, #015a42 100%); }
+.bg-3 { background: radial-gradient(1000px 560px at 82% 78%, rgba(184,134,11,0.30) 0%, transparent 58%), linear-gradient(118deg, #001d17 0%, #012f24 48%, #004D3A 100%); }
+/* trame de points discrète */
+.slide-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+  mask-image: linear-gradient(115deg, transparent 42%, black 100%);
+  -webkit-mask-image: linear-gradient(115deg, transparent 42%, black 100%);
+}
+
+.slide-inner {
+  position: relative; z-index: 3; width: 100%; max-width: var(--container); margin: 0 auto;
+  padding: 62px 28px 0; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 40px; align-items: center;
+}
+
+/* Texte en overlay */
+.hero-copy .kicker {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--or);
+}
+.hero-copy .kicker::before { content: ''; width: 26px; height: 2px; background: var(--or); border-radius: 2px; }
+.hero-copy h1 {
+  margin: 18px 0 16px; font-size: clamp(2.3rem, 1.2rem + 3.6vw, 4rem); line-height: 1.06;
+  font-weight: 800; letter-spacing: -1.5px; color: white; text-wrap: balance;
+}
+.hero-copy h1 em { font-style: normal; color: var(--or); }
+.hero-copy p { font-size: clamp(0.95rem, 0.85rem + 0.35vw, 1.1rem); color: rgba(255,255,255,0.72); max-width: 52ch; }
+.hero-copy p strong { color: white; font-weight: 600; }
+.hero-ctas { display: flex; gap: 14px; margin-top: 30px; flex-wrap: wrap; }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 10px; padding: 14px 26px; border-radius: 9px;
+  background: var(--or); color: var(--vert-nuit); font-weight: 700; font-size: 14px; text-decoration: none;
+  box-shadow: 0 8px 28px rgba(255,206,0,0.28); transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(255,206,0,0.4); }
+.btn-primary i { transition: transform 0.2s; }
+.btn-primary:hover i { transform: translateX(3px); }
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 9px; padding: 14px 22px; border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.25); color: white; font-weight: 600; font-size: 14px; text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.45); }
+
+/* Cascade d'apparition du texte à chaque slide */
+.slide.active .hero-copy > * { animation: riseIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.slide.active .hero-copy > *:nth-child(2) { animation-delay: 0.1s; }
+.slide.active .hero-copy > *:nth-child(3) { animation-delay: 0.2s; }
+.slide.active .hero-copy > *:nth-child(4) { animation-delay: 0.32s; }
+.slide.active .hero-visual { animation: riseIn 0.8s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes riseIn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: translateY(0); } }
+
+/* =============== VISUELS DE SLIDE =============== */
+.hero-visual { position: relative; }
+
+/* Slide 1 — entonnoir 100 → 63 → 27 */
+.viz-funnel { display: flex; flex-direction: column; gap: 16px; max-width: 460px; margin-left: auto; }
+.vf-row { display: grid; grid-template-columns: 74px 1fr; gap: 14px; align-items: center; }
+.vf-label { text-align: right; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.65); letter-spacing: 0.4px; }
+.vf-track { background: rgba(255,255,255,0.07); border-radius: 8px; height: 52px; overflow: hidden; }
+.vf-bar {
+  height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; font-weight: 800; font-size: 19px; color: var(--vert-nuit); min-width: 118px;
+  transform-origin: left; width: 0;
+}
+.slide.active .vf-bar { animation: growBar 1.1s 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes growBar { from { width: 0; opacity: 0.4; } to { width: var(--w); opacity: 1; } }
+.vf-bar small { font-size: 11px; font-weight: 600; opacity: 0.75; }
+.vf-bar.b1 { background: linear-gradient(90deg, #DFF5EA, #ffffff); }
+.vf-bar.b2 { background: linear-gradient(90deg, #FFE9A8, var(--or)); }
+.vf-bar.b3 { background: linear-gradient(90deg, #FFB3B9, #FF6B76); color: #5F1016; }
+.vf-note { margin-top: 4px; text-align: right; font-size: 12px; color: rgba(255,255,255,0.55); }
+.vf-note b { color: #FF8D96; }
+
+/* Slide 2 — carte à points du Togo */
+.viz-map { width: min(330px, 80%); margin: 0 auto; position: relative; }
+.viz-map svg { width: 100%; height: auto; display: block; overflow: visible; }
+.dot { fill: rgba(255,255,255,0.55); }
+.dot.gold { fill: var(--or); }
+.dot.hot { fill: var(--rouge); }
+.pulse { fill: none; stroke: var(--rouge); stroke-width: 1.6; opacity: 0; transform-origin: center; transform-box: fill-box; }
+.slide.active .pulse { animation: pulse 2.4s ease-out infinite; }
+.slide.active .pulse.p2 { animation-delay: 0.8s; }
+.slide.active .pulse.p3 { animation-delay: 1.6s; }
+@keyframes pulse { 0% { opacity: 0.9; transform: scale(0.4); } 70% { opacity: 0; transform: scale(2.6); } 100% { opacity: 0; } }
+.viz-map .map-caption {
+  position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%); white-space: nowrap;
+  font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.45); font-weight: 600;
+}
+
+/* Slide 3 — courbes de projection */
+.viz-forecast { max-width: 470px; margin-left: auto; }
+.viz-forecast svg { width: 100%; height: auto; display: block; overflow: visible; }
+.fc-hist { fill: none; stroke: #7FD8B8; stroke-width: 3; stroke-linecap: round;
+  stroke-dasharray: 640; stroke-dashoffset: 640; }
+.slide.active .fc-hist { animation: draw 1.4s 0.4s ease-out forwards; }
+.fc-proj { fill: none; stroke: var(--or); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 7 8; opacity: 0; }
+.slide.active .fc-proj { animation: fadeI 0.6s 1.5s ease-out forwards; }
+.fc-pess { fill: none; stroke: rgba(255,120,130,0.75); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 4 8; opacity: 0; }
+.slide.active .fc-pess { animation: fadeI 0.6s 1.7s ease-out forwards; }
+.fc-target { opacity: 0; }
+.slide.active .fc-target { animation: fadeI 0.5s 2s ease-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fadeI { to { opacity: 1; } }
+.fc-grid { stroke: rgba(255,255,255,0.09); stroke-width: 1; }
+.fc-lbl { font-size: 11px; fill: rgba(255,255,255,0.5); font-weight: 600; }
+.fc-lbl.gold { fill: var(--or); font-weight: 700; }
+
+/* =============== CONTRÔLES CARROUSEL =============== */
+.hero-controls {
+  position: absolute; z-index: 10; left: 0; right: 0; bottom: 26px;
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+}
+.h-arrow {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(0,43,32,0.35); color: white; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s; backdrop-filter: blur(4px);
+}
+.h-arrow:hover { background: var(--or); color: var(--vert-nuit); border-color: var(--or); }
+.h-dots { display: flex; gap: 9px; align-items: center; }
+.h-dot {
+  width: 26px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.25);
+  border: none; cursor: pointer; padding: 0; transition: background 0.3s; position: relative; overflow: hidden;
+}
+.h-dot.active { background: rgba(255,255,255,0.35); }
+.h-dot.active::after {
+  content: ''; position: absolute; inset: 0; background: var(--or); border-radius: 3px;
+  transform-origin: left; animation: dotProgress var(--delay, 6.5s) linear forwards;
+}
+.hero.paused .h-dot.active::after { animation-play-state: paused; }
+@keyframes dotProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* =============== BANDEAU CHIFFRES =============== */
+.stats-strip { background: white; border-bottom: 1px solid #E8ECF0; }
+.stats-inner {
+  max-width: var(--container); margin: 0 auto; padding: 26px 28px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+}
+.stat-item { display: flex; align-items: center; gap: 14px; }
+.stat-item i {
+  width: 44px; height: 44px; border-radius: 10px; background: var(--vert-clair); color: var(--vert);
+  display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+}
+.stat-item .st-num { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.stat-item .st-lbl { font-size: 11.5px; color: var(--gris-texte); font-weight: 500; }
+.stat-item.alerte i { background: #FED7D7; color: #C53030; }
+.stat-item.alerte .st-num { color: #C53030; }
+
+/* =============== SECTION EXPLORER =============== */
+.explore { padding: 74px 0 84px; }
+.explore-head { max-width: var(--container); margin: 0 auto 40px; padding: 0 28px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.explore-head .kicker {
+  display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--vert);
+}
+.explore-head .kicker::before { content: ''; width: 26px; height: 2px; background: var(--or); border-radius: 2px; }
+.explore-head h2 { font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.3rem); font-weight: 800; letter-spacing: -0.8px; margin-top: 12px; text-wrap: balance; }
+.explore-head p { color: var(--gris-texte); font-size: 14px; max-width: 46ch; }
+
+.cards-grid {
+  max-width: var(--container); margin: 0 auto; padding: 0 28px;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px;
+}
+.tab-card {
+  grid-column: span 2; background: white; border-radius: 14px; padding: 26px 24px 22px;
+  text-decoration: none; color: var(--encre); position: relative; overflow: hidden;
+  box-shadow: var(--shadow-sm); border: 1px solid #E8ECF0;
+  display: flex; flex-direction: column; gap: 12px; min-height: 210px;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s, border-color 0.25s;
+}
+.tab-card.wide { grid-column: span 3; flex-direction: row; align-items: center; gap: 22px; min-height: 150px; }
+.tab-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: transparent; }
+.tab-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--accent, var(--vert)); transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease;
+}
+.tab-card:hover::before { transform: scaleX(1); }
+.tc-icon {
+  width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--accent, var(--vert)) 12%, white);
+  color: var(--accent, var(--vert)); display: flex; align-items: center; justify-content: center; font-size: 19px;
+  transition: transform 0.25s;
+}
+.tab-card:hover .tc-icon { transform: scale(1.08) rotate(-4deg); }
+.tc-body { display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.tc-num { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--gris-mute); text-transform: uppercase; }
+.tc-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+.tc-desc { font-size: 12.5px; color: var(--gris-texte); line-height: 1.55; }
+.tc-desc b { color: var(--encre); }
+.tc-go {
+  margin-top: auto; display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 700; color: var(--accent, var(--vert));
+}
+.tc-go i { transition: transform 0.2s; font-size: 11px; }
+.tab-card:hover .tc-go i { transform: translateX(4px); }
+.tab-card .tc-watermark {
+  position: absolute; right: -12px; bottom: -16px; font-size: 88px; line-height: 1;
+  color: var(--accent, var(--vert)); opacity: 0.05; transition: opacity 0.25s, transform 0.25s; pointer-events: none;
+}
+.tab-card:hover .tc-watermark { opacity: 0.09; transform: scale(1.06); }
+
+/* Apparition au scroll */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal.in { opacity: 1; transform: none; }
+.reveal:nth-child(2) { transition-delay: 0.07s; }
+.reveal:nth-child(3) { transition-delay: 0.14s; }
+.reveal:nth-child(4) { transition-delay: 0.21s; }
+.reveal:nth-child(5) { transition-delay: 0.28s; }
+
+/* =============== MODE SOMBRE =============== */
+body.dark { background: #0F1620; color: #E7EDF3; }
+body.dark .stats-strip { background: #131D28; border-bottom-color: #223041; }
+body.dark .stat-item .st-num { color: #E7EDF3; }
+body.dark .stat-item .st-lbl { color: #A9B6C4; }
+body.dark .stat-item i { background: #12352A; color: #43C994; }
+body.dark .stat-item.alerte i { background: #33191D; color: #FF8189; }
+body.dark .stat-item.alerte .st-num { color: #FF8189; }
+body.dark .explore-head h2 { color: #E7EDF3; }
+body.dark .explore-head p { color: #A9B6C4; }
+body.dark .explore-head .kicker { color: #43C994; }
+body.dark .tab-card { background: #18222E; border-color: #223041; color: #E7EDF3; box-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+body.dark .tab-card:hover { box-shadow: 0 16px 44px rgba(0,0,0,0.5); }
+body.dark .tc-desc { color: #A9B6C4; }
+body.dark .tc-desc b { color: #E7EDF3; }
+body.dark .tc-num { color: #6C7B8C; }
+body.dark .tc-icon { background: color-mix(in srgb, var(--accent, var(--vert)) 20%, #18222E); }
+
+/* =============== ACCESSIBILITÉ / MOTION =============== */
+a:focus-visible, button:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .slide, .slide.active .hero-copy > *, .slide.active .hero-visual,
+  .slide.active .vf-bar, .slide.active .fc-hist, .slide.active .fc-proj,
+  .slide.active .fc-pess, .slide.active .fc-target, .slide.active .pulse,
+  .reveal, .h-dot.active::after { animation: none !important; transition: none !important; }
+  .slide.active .vf-bar { width: var(--w); }
+  .fc-hist { stroke-dashoffset: 0; }
+  .fc-proj, .fc-pess, .fc-target { opacity: 1; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* =============== RESPONSIVE =============== */
+@media (max-width: 1024px) {
+  .slide-inner { grid-template-columns: 1fr; gap: 26px; padding-top: 86px; }
+  .hero-visual { display: none; }
+  .hero { height: auto; min-height: 480px; }
+  .slide { position: absolute; }
+  .hero-copy { padding-bottom: 90px; }
+  .stats-inner { grid-template-columns: repeat(2, 1fr); }
+  .tab-card, .tab-card.wide { grid-column: span 3; }
+}
+@media (max-width: 640px) {
+  .header-nav a.nav-link { display: none; }
+  .stats-inner { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .tab-card, .tab-card.wide { grid-column: span 6; flex-direction: column; align-items: flex-start; min-height: 0; }
+  .hero-ctas .btn-ghost { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- =============== HEADER =============== -->
+<header class="header" id="header">
+  <a class="brand" href="index.html">
+    <div class="flag-bar">
+      <div class="stripe green"></div><div class="stripe yellow"></div><div class="stripe red"></div>
+      <div class="star"><i class="fas fa-star"></i></div>
+    </div>
+    <div class="brand-name">Togo Éducation<small>Défi Togo AI Lab</small></div>
+  </a>
+  <div class="header-spacer"></div>
+  <nav class="header-nav">
+    <a class="nav-link" href="#explorer">Explorer</a>
+    <a class="nav-link" href="dashboard-mockup.html#tab2">Carte</a>
+    <button class="theme-btn" id="themeToggle" onclick="toggleTheme()" title="Mode sombre / clair"><i class="fas fa-moon"></i></button>
+    <a class="btn-dash" href="dashboard-mockup.html">Ouvrir le dashboard <i class="fas fa-arrow-right"></i></a>
+  </nav>
+</header>
+
+<!-- =============== HERO / CARROUSEL =============== -->
+<section class="hero" id="hero">
+
+  <!-- Slide 1 — Vision macro -->
+  <article class="slide active" aria-label="Diapositive 1 sur 3">
+    <div class="slide-bg bg-1"><span class="star-mark"><i class="fas fa-star"></i></span></div>
+    <div class="slide-inner">
+      <div class="hero-copy">
+        <span class="kicker">Défi Togo AI Lab · Éducation</span>
+        <h1>Dix ans de données pour <em>piloter</em> l'école togolaise</h1>
+        <p>De 2013 à 2022, le primaire a progressé — mais <strong>sur 100 élèves entrés au primaire, seuls 27 achèvent le lycée</strong>. Ce tableau de bord montre précisément où le système perd ses élèves, et où agir.</p>
+        <div class="hero-ctas">
+          <a class="btn-primary" href="dashboard-mockup.html">Explorer le dashboard <i class="fas fa-arrow-right"></i></a>
+          <a class="btn-ghost" href="#explorer"><i class="fas fa-compass"></i> Découvrir les 5 vues</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="viz-funnel" role="img" aria-label="Entonnoir éducatif : 100 élèves au primaire, 63 au collège, 27 au lycée">
+          <div class="vf-row"><span class="vf-label">Primaire</span><div class="vf-track"><div class="vf-bar b1" style="--w:100%">100 <small>élèves</small></div></div></div>
+          <div class="vf-row"><span class="vf-label">Collège</span><div class="vf-track"><div class="vf-bar b2" style="--w:63%">63 <small>62,7%</small></div></div></div>
+          <div class="vf-row"><span class="vf-label">Lycée</span><div class="vf-track"><div class="vf-bar b3" style="--w:27%">27 <small>27,2%</small></div></div></div>
+          <div class="vf-note">L'entonnoir éducatif — <b>73 élèves sur 100</b> n'atteignent pas la fin du lycée</div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Slide 2 — Cartographie -->
+  <article class="slide" aria-label="Diapositive 2 sur 3">
+    <div class="slide-bg bg-2"><span class="star-mark"><i class="fas fa-map-marked-alt"></i></span></div>
+    <div class="slide-inner">
+      <div class="hero-copy">
+        <span class="kicker">Cartographie scolaire</span>
+        <h1>15 454 écoles sur une carte, des priorités <em>qui sautent aux yeux</em></h1>
+        <p>Établissements, toilettes, bâtiments et <strong>241 projets COSO</strong> superposés sur le territoire. Le Sud concentre les écoles ; le Nord — <strong>les Savanes en tête</strong> — concentre les urgences.</p>
+        <div class="hero-ctas">
+          <a class="btn-primary" href="dashboard-mockup.html#tab2">Voir la carte interactive <i class="fas fa-arrow-right"></i></a>
+          <a class="btn-ghost" href="dashboard-mockup.html#tab3"><i class="fas fa-balance-scale"></i> Comparer les régions</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="viz-map" role="img" aria-label="Carte stylisée du Togo : les points rouges signalent les préfectures prioritaires au nord">
+          <svg viewBox="0 0 200 340">
+            <!-- silhouette du Togo en points (stylisée) -->
+            <circle class="dot" cx="66" cy="30" r="4"/><circle class="dot" cx="90" cy="26" r="4"/><circle class="dot" cx="114" cy="30" r="4"/>
+            <circle class="dot" cx="70" cy="56" r="4"/><circle class="dot" cx="94" cy="52" r="4"/><circle class="dot" cx="118" cy="56" r="4"/>
+            <circle class="dot" cx="76" cy="82" r="4"/><circle class="dot" cx="100" cy="78" r="4"/><circle class="dot" cx="122" cy="84" r="4"/>
+            <circle class="dot" cx="80" cy="108" r="4"/><circle class="dot" cx="104" cy="104" r="4"/><circle class="dot" cx="126" cy="110" r="4"/>
+            <circle class="dot" cx="84" cy="134" r="4"/><circle class="dot" cx="108" cy="130" r="4"/><circle class="dot" cx="128" cy="136" r="4"/>
+            <circle class="dot" cx="86" cy="160" r="4"/><circle class="dot" cx="110" cy="156" r="4"/><circle class="dot" cx="130" cy="162" r="4"/>
+            <circle class="dot" cx="88" cy="186" r="4"/><circle class="dot" cx="112" cy="182" r="4"/><circle class="dot" cx="132" cy="188" r="4"/>
+            <circle class="dot" cx="88" cy="212" r="4"/><circle class="dot" cx="112" cy="208" r="4"/><circle class="dot" cx="134" cy="214" r="4"/>
+            <circle class="dot" cx="90" cy="238" r="4"/><circle class="dot" cx="114" cy="234" r="4"/><circle class="dot" cx="136" cy="240" r="4"/>
+            <circle class="dot" cx="94" cy="264" r="4"/><circle class="dot" cx="118" cy="260" r="4"/><circle class="dot" cx="138" cy="266" r="4"/>
+            <circle class="dot" cx="100" cy="290" r="4"/><circle class="dot" cx="124" cy="288" r="4"/><circle class="dot" cx="142" cy="292" r="4"/>
+            <circle class="dot" cx="112" cy="314" r="4"/><circle class="dot" cx="134" cy="312" r="4"/>
+            <!-- points chauds : Savanes (nord) -->
+            <circle class="pulse p1" cx="90" cy="26" r="9"/><circle class="dot hot" cx="90" cy="26" r="5.5"/>
+            <circle class="pulse p2" cx="70" cy="56" r="9"/><circle class="dot hot" cx="70" cy="56" r="5.5"/>
+            <circle class="pulse p3" cx="118" cy="56" r="9"/><circle class="dot hot" cx="118" cy="56" r="5.5"/>
+            <!-- points or : projets COSO -->
+            <circle class="dot gold" cx="94" cy="52" r="5"/><circle class="dot gold" cx="100" cy="78" r="5"/><circle class="dot gold" cx="104" cy="104" r="5"/>
+            <!-- capitale -->
+            <circle class="dot gold" cx="112" cy="314" r="5.5"/>
+          </svg>
+          <span class="map-caption">● Prioritaire &nbsp;·&nbsp; <span style="color:var(--or)">●</span> Projets COSO</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Slide 3 — Décider pour 2030 -->
+  <article class="slide" aria-label="Diapositive 3 sur 3">
+    <div class="slide-bg bg-3"><span class="star-mark"><i class="fas fa-rocket"></i></span></div>
+    <div class="slide-inner">
+      <div class="hero-copy">
+        <span class="kicker">Décider pour 2030</span>
+        <h1>Simuler l'impact de <em>chaque franc</em> investi</h1>
+        <p>Prévisions d'achèvement, clusters des 39 préfectures et simulateur budgétaire : <strong>avec 20 % du budget national, l'achèvement collège peut atteindre 77 % en 2030</strong> — contre 64 % si rien ne change.</p>
+        <div class="hero-ctas">
+          <a class="btn-primary" href="dashboard-mockup.html#tab5">Lancer le simulateur <i class="fas fa-arrow-right"></i></a>
+          <a class="btn-ghost" href="dashboard-mockup.html#tab1"><i class="fas fa-chart-pie"></i> Voir les chiffres clés</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="viz-forecast" role="img" aria-label="Courbe historique 2013-2022 puis projections 2030 : optimiste 77 %, pessimiste 64 %">
+          <svg viewBox="0 0 460 260">
+            <line class="fc-grid" x1="20" y1="40" x2="440" y2="40"/>
+            <line class="fc-grid" x1="20" y1="105" x2="440" y2="105"/>
+            <line class="fc-grid" x1="20" y1="170" x2="440" y2="170"/>
+            <line class="fc-grid" x1="20" y1="235" x2="440" y2="235"/>
+            <!-- historique 2013-2022 -->
+            <polyline class="fc-hist" points="20,215 65,212 110,196 155,182 200,170 245,150 290,128"/>
+            <!-- projection optimiste -->
+            <polyline class="fc-proj" points="290,128 340,102 395,74 440,52"/>
+            <!-- projection pessimiste -->
+            <polyline class="fc-pess" points="290,128 340,124 395,120 440,116"/>
+            <circle cx="290" cy="128" r="5" fill="#7FD8B8"/>
+            <g class="fc-target">
+              <circle cx="440" cy="52" r="6" fill="#FFCE00"/>
+              <text class="fc-lbl gold" x="404" y="34">77 % · 2030</text>
+              <text class="fc-lbl" x="398" y="140" fill="rgba(255,140,150,0.9)">64 % si statu quo</text>
+            </g>
+            <text class="fc-lbl" x="20" y="255">2013</text>
+            <text class="fc-lbl" x="276" y="255">2022</text>
+            <text class="fc-lbl" x="424" y="255">2030</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Contrôles -->
+  <div class="hero-controls">
+    <button class="h-arrow" onclick="prevSlide()" aria-label="Diapositive précédente"><i class="fas fa-chevron-left"></i></button>
+    <div class="h-dots" id="heroDots">
+      <button class="h-dot active" onclick="goSlide(0)" aria-label="Diapositive 1"></button>
+      <button class="h-dot" onclick="goSlide(1)" aria-label="Diapositive 2"></button>
+      <button class="h-dot" onclick="goSlide(2)" aria-label="Diapositive 3"></button>
+    </div>
+    <button class="h-arrow" onclick="nextSlide()" aria-label="Diapositive suivante"><i class="fas fa-chevron-right"></i></button>
+  </div>
+</section>
+
+<!-- =============== BANDEAU CHIFFRES =============== -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item"><i class="fas fa-school"></i><div><div class="st-num">15 454</div><div class="st-lbl">Établissements cartographiés</div></div></div>
+    <div class="stat-item"><i class="fas fa-hard-hat"></i><div><div class="st-num">241</div><div class="st-lbl">Projets COSO suivis</div></div></div>
+    <div class="stat-item"><i class="fas fa-database"></i><div><div class="st-num">16</div><div class="st-lbl">Jeux de données ouverts</div></div></div>
+    <div class="stat-item alerte"><i class="fas fa-percent"></i><div><div class="st-num">14,7 %</div><div class="st-lbl">Part du budget éducation — en chute</div></div></div>
+  </div>
+</div>
+
+<!-- =============== EXPLORER : 5 CARDS =============== -->
+<section class="explore" id="explorer">
+  <div class="explore-head">
+    <div>
+      <span class="kicker">Cinq vues, une décision</span>
+      <h2>Explorez le tableau de bord</h2>
+    </div>
+    <p>Chaque vue répond à une question du décideur : où en est-on, où sont les écoles, quelles régions décrochent, où en est la parité, et où investir demain.</p>
+  </div>
+
+  <div class="cards-grid">
+    <a class="tab-card reveal" href="dashboard-mockup.html#tab1" style="--accent:#006A4E">
+      <div class="tc-icon"><i class="fas fa-chart-pie"></i></div>
+      <div class="tc-body">
+        <span class="tc-num">Vue 01</span>
+        <span class="tc-title">En chiffres</span>
+        <span class="tc-desc">6 indicateurs vitaux avec tendance 10 ans, entonnoir éducatif et lien <b>budget ↔ résultats</b>.</span>
+        <span class="tc-go">Ouvrir la vue <i class="fas fa-arrow-right"></i></span>
+      </div>
+      <span class="tc-watermark"><i class="fas fa-chart-pie"></i></span>
+    </a>
+
+    <a class="tab-card reveal" href="dashboard-mockup.html#tab2" style="--accent:#B8860B">
+      <div class="tc-icon"><i class="fas fa-map-marked-alt"></i></div>
+      <div class="tc-body">
+        <span class="tc-num">Vue 02</span>
+        <span class="tc-title">Carte interactive</span>
+        <span class="tc-desc"><b>15 454 écoles</b>, 10 228 toilettes et 86 projets COSO géolocalisés, par couches activables.</span>
+        <span class="tc-go">Ouvrir la carte <i class="fas fa-arrow-right"></i></span>
+      </div>
+      <span class="tc-watermark"><i class="fas fa-map-marked-alt"></i></span>
+    </a>
+
+    <a class="tab-card reveal" href="dashboard-mockup.html#tab3" style="--accent:#0033A0">
+      <div class="tc-icon"><i class="fas fa-balance-scale"></i></div>
+      <div class="tc-body">
+        <span class="tc-num">Vue 03</span>
+        <span class="tc-title">Comparateur régional</span>
+        <span class="tc-desc">Heatmap, radar et classement : <b>15 points d'écart</b> entre Kara (81) et les Savanes (66).</span>
+        <span class="tc-go">Comparer les régions <i class="fas fa-arrow-right"></i></span>
+      </div>
+      <span class="tc-watermark"><i class="fas fa-balance-scale"></i></span>
+    </a>
+
+    <a class="tab-card wide reveal" href="dashboard-mockup.html#tab4" style="--accent:#D53F8C">
+      <div class="tc-icon"><i class="fas fa-venus-mars"></i></div>
+      <div class="tc-body">
+        <span class="tc-num">Vue 04</span>
+        <span class="tc-title">Filles vs Garçons</span>
+        <span class="tc-desc">L'écart au BEPC : <b>5,9 points en défaveur des filles</b> — et près de 10 points aux Savanes et Plateaux Ouest.</span>
+        <span class="tc-go">Analyser la parité <i class="fas fa-arrow-right"></i></span>
+      </div>
+      <span class="tc-watermark"><i class="fas fa-venus-mars"></i></span>
+    </a>
+
+    <a class="tab-card wide reveal" href="dashboard-mockup.html#tab5" style="--accent:#EF3340">
+      <div class="tc-icon"><i class="fas fa-rocket"></i></div>
+      <div class="tc-body">
+        <span class="tc-num">Vue 05</span>
+        <span class="tc-title">Investir demain</span>
+        <span class="tc-desc">Prévisions 2030, clusters des <b>39 préfectures</b>, simulateur budgétaire et 6 recommandations chiffrées.</span>
+        <span class="tc-go">Préparer la décision <i class="fas fa-arrow-right"></i></span>
+      </div>
+      <span class="tc-watermark"><i class="fas fa-rocket"></i></span>
+    </a>
+  </div>
+</section>
+
+<script>
+/* =============== CARROUSEL =============== */
+const slides = [...document.querySelectorAll('.slide')];
+const dots = [...document.querySelectorAll('.h-dot')];
+const hero = document.getElementById('hero');
+const AUTO_DELAY = 6500;
+let current = 0, timer = null;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function goSlide(i){
+  current = (i + slides.length) % slides.length;
+  slides.forEach((s, k) => s.classList.toggle('active', k === current));
+  dots.forEach((d, k) => {
+    d.classList.remove('active');
+    if (k === current) {
+      // relance la barre de progression du point actif
+      void d.offsetWidth;
+      d.classList.add('active');
+    }
+  });
+  restartAuto();
+}
+function nextSlide(){ goSlide(current + 1); }
+function prevSlide(){ goSlide(current - 1); }
+function restartAuto(){
+  if (reducedMotion) return;
+  clearInterval(timer);
+  timer = setInterval(nextSlide, AUTO_DELAY);
+}
+restartAuto();
+document.documentElement.style.setProperty('--delay', AUTO_DELAY + 'ms');
+
+/* Pause au survol / focus */
+hero.addEventListener('mouseenter', () => { clearInterval(timer); hero.classList.add('paused'); });
+hero.addEventListener('mouseleave', () => { hero.classList.remove('paused'); restartAuto(); });
+hero.addEventListener('focusin',  () => { clearInterval(timer); hero.classList.add('paused'); });
+hero.addEventListener('focusout', () => { hero.classList.remove('paused'); restartAuto(); });
+
+/* Navigation clavier */
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextSlide();
+  if (e.key === 'ArrowLeft') prevSlide();
+});
+
+/* Header opaque après défilement */
+const header = document.getElementById('header');
+window.addEventListener('scroll', () => header.classList.toggle('solid', window.scrollY > 40), {passive: true});
+
+/* Thème clair / sombre (partagé avec le dashboard via localStorage) */
+function applyTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('themeToggle').innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+  localStorage.setItem('tg-theme', dark ? 'dark' : 'light');
+}
+function toggleTheme(){ applyTheme(!document.body.classList.contains('dark')); }
+applyTheme(localStorage.getItem('tg-theme') === 'dark');
+
+/* Révélation des cards au scroll */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+}, {threshold: 0.15});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

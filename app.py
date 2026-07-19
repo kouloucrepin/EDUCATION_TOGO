@@ -1,0 +1,892 @@
+"""Dashboard Éducation Togo - Application Flask.
+
+Reproduit le dashboard mockup (4 premiers onglets) en s'appuyant sur les
+packages de visualisation `modules_visu` (pyecharts / ECharts + folium).
+
+Lancement :  python app.py  →  http://127.0.0.1:5000
+"""
+import gzip
+import html as html_std
+import os
+import re
+import threading
+from functools import lru_cache
+
+from flask import Flask, Response, jsonify, render_template, request
+
+import agent_ia
+from modules_visu.embed import chart_fragment
+from modules_visu import onglet1 as o1
+from modules_visu import onglet2 as o2
+from modules_visu import onglet3 as o3
+from modules_visu import onglet4 as o4
+from modules_visu.onglet3.config import REGIONS as REGIONS_O3
+from modules_visu.onglet4.config import REGIONS_09_SIMPLE
+
+app = Flask(__name__)
+
+# Cache navigateur : 7 jours pour les fichiers statiques (css, images, js) —
+# le CSS est versionné par mtime (voir _version_assets) donc jamais périmé.
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 60 * 60 * 24 * 7
+
+
+@app.context_processor
+def _version_assets():
+    """Version du style.css basée sur sa date de modification : le navigateur
+    peut cacher longtemps, toute mise à jour du fichier change l'URL."""
+    try:
+        v = int(os.path.getmtime(os.path.join(app.static_folder, 'css', 'style.css')))
+    except OSError:
+        v = 0
+    return {'css_v': v}
+
+
+@app.after_request
+def _compression_gzip(reponse):
+    """Compresse les réponses texte : les pages du dashboard embarquent leurs
+    graphiques ECharts (jusqu'à ~200 Ko de HTML) et les cartes folium sont
+    encore plus lourdes — le gzip divise le transfert par ~6."""
+    compressible = (reponse.mimetype or '').startswith('text/') or \
+        reponse.mimetype in ('application/json', 'application/javascript')
+    if (not compressible
+            or reponse.direct_passthrough
+            or reponse.status_code != 200
+            or 'Content-Encoding' in reponse.headers
+            or 'gzip' not in request.headers.get('Accept-Encoding', '').lower()):
+        return reponse
+    corps = reponse.get_data()
+    if len(corps) < 1000:          # trop petit pour que ça vaille le coût CPU
+        return reponse
+    reponse.set_data(gzip.compress(corps, 6))
+    reponse.headers['Content-Encoding'] = 'gzip'
+    reponse.headers['Content-Length'] = str(len(reponse.get_data()))
+    reponse.headers.setdefault('Vary', 'Accept-Encoding')
+    return reponse
+
+# ---------------------------------------------------------------------------
+# Internationalisation FR / EN de l'habillage (les libellés internes des
+# graphiques — légendes, axes — restent en français : ils viennent des données)
+# ---------------------------------------------------------------------------
+TRADUCTIONS = {
+    'fr': {
+        'nav1': "Vue d'ensemble nationale", 'nav2': 'Cartographie des infrastructures',
+        'nav3': 'Disparités régionales', 'nav4': 'Parité filles-garçons',
+        'nav5': 'Recommandations',
+        'desc5': 'Ce que les données commandent de faire : six recommandations tirées des quatre vues',
+        'prio1': 'Priorité 1 · agir maintenant', 'prio2': 'Priorité 2 · structurer',
+        'prio3': 'Priorité 3 · consolider',
+        'reco_constat': 'Constat', 'reco_actions': 'Actions recommandées',
+        'reco_suivi': 'Indicateur de suivi',
+        'reco_side_note': 'Synthèse des enseignements des 4 vues — aucune donnée à filtrer ici.',
+        'desc1': "État du système éducatif togolais : indicateurs clés, flux d'élèves et financement",
+        'desc2': 'Couverture scolaire du territoire et investissements COSO',
+        'desc3': 'Performances scolaires comparées des régions : identifier les territoires en retard',
+        'desc4': "Égalité filles-garçons dans l'éducation : résultats au BEPC et personnel enseignant",
+        'filtres': "Filtres d'analyse", 'filtres_sub': "Affinez les données de l'onglet actif",
+        'periode': 'Période', 'territoire': 'Territoire (drill-down)',
+        'periode_pop': 'Période et population', 'terr_periode': 'Territoire et période',
+        'annee_ref': 'Année de référence', 'annee': 'Année', 'region': 'Région',
+        'prefecture': 'Préfecture', 'commune': 'Commune', 'sexe': 'Sexe',
+        'region_bepc': 'Région (courbes BEPC)',
+        'toutes_regions': 'Toutes les régions', 'toutes_prefs': 'Toutes les préfectures',
+        'toutes_communes': 'Toutes les communes', 'derniere': 'Dernière disponible',
+        'choisir_pref': "Choisissez d'abord une préfecture",
+        'appliquer': 'Appliquer', 'sources': 'Sources', 'accueil': 'Accueil',
+        'pdf_btn': 'Note méthodologique (PDF)',
+        'donnees_src': 'Données INSEED / MEPS', 'chargement': 'Chargement des données...',
+        'tt_theme': 'Mode sombre / clair', 'tt_menu': 'Plier / déplier le menu',
+        'tt_dl': 'Exporter (PNG ou CSV)', 'tt_dl_carte': 'Télécharger la carte en PNG',
+        'tt_grandir': 'Agrandir', 'tt_lecture': 'Lecture',
+        'c_entonnoir': "Entonnoir éducatif - Flux d'élèves",
+        'seg_entonnoir': 'Entonnoir', 'seg_evo_flux': 'Évolution 2013-2022',
+        'seg_bud_lien': 'Lien', 'seg_bud_evo': 'Évolution',
+        'c_budget': 'Budget vs Résultats - part du budget et achèvement par niveau',
+        'c_evolution': 'Évolution 2013-2022 -',
+        'evo_niveau': "Taux d'achèvement par niveau", 'evo_secteur': "Nombre d'écoles par secteur",
+        'seg_niveau': 'Niveau', 'seg_secteur': 'Secteur',
+        'c_tableau': 'Tableau des indicateurs',
+        'tbl_paren': '(national : secteur Total, pivots 2013-2022 · régional : 2014-2022)',
+        'vue': 'Vue', 'national': 'National', 'par_region': 'Par région',
+        'correlations': 'Corrélations',
+        'c_carte_pts': 'Carte des infrastructures scolaires et des projets COSO',
+        'c_carte_thema': 'Carte thématique -', 'par': 'par',
+        'carte_points': 'Carte des points', 'carte_thema': 'Carte thématique',
+        'etablissements': 'Établissements', 'toilettes_lbl': 'Toilettes scolaires (ratio',
+        'coso_geo': 'Projets COSO géolocalisés', 'salles': 'Salles de classe (projets géolocalisés)',
+        'c_types_coso': 'Types de projets COSO', 'geo_paren': 'projets géolocalisés',
+        'c_statut': "Statut d'avancement",
+        'type_projet': 'Type de projet', 'tous_types': 'Tous les types',
+        'c_matrice': 'Matrice Région × Indicateur', 'derniere_annee': 'dernière année disponible',
+        'c_comparateur': 'Comparateur de profils régionaux', 'tout_comparer': '- Tout comparer -',
+        'toutes_label': 'toutes les régions', 'derniere_courte': 'dernière année',
+        'c_transition': 'Évolution du taux de transition primaire → secondaire',
+        'c_classement': 'Classement des régions par score composite',
+        'graphique': 'Graphique', 'tableau_ar': 'Tableau années × régions',
+        'graphique_lbl': 'graphique', 'tableau_lbl': 'tableau',
+        'c_bepc': 'Admission BEPC - Filles vs Garçons',
+        'c_ecart': 'Écart Filles / Garçons par région',
+        'c_presco': 'Répartition des enseignants du préscolaire',
+        'par_region_sexe': 'Par région et sexe',
+        'c_top_insp': 'Top 10 inspections locales - Effectifs préscolaires',
+        'hors_agregats': 'hors agrégats',
+        'k_filles': 'Taux BEPC - Filles', 'k_garcons': 'Taux BEPC - Garçons',
+        'k_ecart': 'Écart Filles - Garçons', 'pts_depuis': 'pts depuis 2011',
+        'etait': 'Était', 'en_2011': 'en 2011', 'reduit_de': 'Réduit de',
+        'defaveur': 'pts en 2011 - en défaveur des filles',
+        'enseignants': 'enseignants', 'femmes': 'femmes', 'hommes': 'hommes',
+        'i_entonnoir': "L'entonnoir se resserre brutalement après le primaire : sur 100 élèves, 63 achèvent le collège et 27 le lycée. L'urgence est au collège. Vue Évolution : les taux d'achèvement des 3 niveaux en barres, année par année.",
+        'i_budget': "Les résultats montent avec la part budgétaire jusqu'au pic 2021 (19,4 %), puis 2022 recule à 14,7 % : les acquis sont menacés.",
+        'i_evolution': "Le primaire plafonne autour de 88 %, le collège rattrape rapidement (+26 pts), le lycée stagne sous 30 % depuis 10 ans. Vue Secteur : la croissance du parc d'écoles est portée par le privé.",
+        'i_tableau': "Vue nationale (fichier 06), vue régionale (fichiers 08/09/10) ou matrice de corrélations entre les indicateurs nationaux 2013-2022 : le vert signale des indicateurs qui évoluent ensemble, le rouge en sens inverse. Export CSV de la vue affichée.",
+        'i_carte_pts': 'Le Sud concentre les écoles, les projets COSO ciblent le Nord. Zoomez pour éclater les clusters ; couches activables en haut à droite de la carte.',
+        'i_carte_thema': 'Choroplèthe par région ou préfecture (polygones geoBoundaries) ; niveau commune en bulles aux centroïdes. Combinez avec les filtres de gauche pour le drill-down.',
+        'i_types_coso': "L'effort porte sur l'infrastructure de base : bâtiments du primaire et blocs latrines dominent (86 projets géolocalisés sur 241). Survolez une barre pour voir le camembert des statuts filtré sur ce type ; cliquez pour épingler le filtre, re-cliquez pour le libérer.",
+        'i_statut': 'La majorité des projets sont en réception provisoire - très peu sont totalement achevés et remis aux communautés.',
+        'i_matrice': 'Les Savanes décrochent sur tous les indicateurs : BEPC à 48,9 % contre 80,8 % à Kara. Les cellules vert foncé marquent la meilleure région de chaque colonne.',
+        'i_comparateur': 'Superposez deux profils régionaux, ou tous avec « Tout comparer » : promotion, transition, BEPC, scolarisation et achèvement collège (les deux derniers sont nationaux).',
+        'i_transition': 'Lomé-Golfe et Kara tirent la transition vers le haut ; les Savanes chutent fortement depuis 2016.',
+        'i_classement': "Graphique : classement de l'année choisie (vert = podium, rouge = dernier). Tableau : score par région et par année, moyenne 2014-2022 en pied figé.",
+        'i_bepc': "La bande rose matérialise l'écart entre les deux courbes : il se resserre lentement mais ne se ferme jamais. Changez la région dans les filtres à gauche.",
+        'i_ecart': 'Régions triées de la plus inégalitaire à la plus paritaire. En 2022, Plateaux Ouest (-9,8 pts) et Savanes (-9,7 pts) sont en tête.',
+        'i_presco': "Vue nationale (donut, ligne T.Général) ou détail par région et sexe. Sans double comptage du fichier 13.",
+        'i_top_insp': 'Inspections locales uniquement (agrégats T.Général et T.R.* exclus). Le Grand Lomé place 6 inspections sur 10 dans le top.',
+        'chat_nom': 'Assistant Éducation Togo', 'chat_statut': 'En ligne · Données 2013-2022',
+        'chat_bienvenue': 'Bonjour ! Je suis votre assistant pour les données éducatives du Togo. Posez votre question ou choisissez un sujet :',
+        'chat_placeholder': 'Exprimez votre question...',
+        'chat_q1': '📊 Taux lycée', 'chat_q2': '📍 Région prioritaire', 'chat_q3': '💰 Budget',
+        'chat_q4': '🏗️ Projet COSO', 'chat_q5': '👩‍🎓 Parité',
+        'chat_tq1': "Quel est le taux d'achèvement au lycée ?",
+        'chat_tq2': 'Quelle région est la plus prioritaire ?',
+        'chat_tq3': 'Comment évolue le budget éducation ?',
+        'chat_tq4': "C'est quoi le projet COSO ?",
+        'chat_tq5': "Quel est l'écart filles-garçons ?",
+        'chat_q6': '🏫 Écoles', 'chat_q7': '🧮 Score composite', 'chat_q8': '🔁 Transition',
+        'chat_q9': '👩‍🏫 Préscolaire', 'chat_q10': '🎓 BEPC 2022',
+        'chat_tq6': "Combien d'écoles compte le Togo et comment se répartissent-elles par région ?",
+        'chat_tq7': 'Quelle région a le score composite le plus faible et pourquoi ?',
+        'chat_tq8': "C'est quoi le taux de transition primaire-secondaire ?",
+        'chat_tq9': "Combien d'enseignants compte le préscolaire et quelle est la part de femmes ?",
+        'chat_tq10': 'Quel est le taux de réussite au BEPC en 2022 ?',
+        'a_ouvrir': 'Ouvrir le dashboard',
+        'a_kicker': 'Défi Togo AI Lab · Éducation',
+        'a_h1': "Dix ans de données pour <em>piloter</em> l'école togolaise",
+        'a_p': "De 2013 à 2022 : sur 100 élèves entrés au primaire, <strong>seuls 27 achèvent le lycée</strong>. Ce tableau de bord croise 16 jeux de données ouvertes - 15 454 écoles, 241 projets COSO, résultats régionaux et parité filles-garçons - pour montrer où agir.",
+        'a_cta1': 'Explorer le dashboard', 'a_cta2': 'Voir la carte',
+        'a_st1': 'Établissements cartographiés', 'a_st2': 'Projets COSO suivis',
+        'a_st3': 'Jeux de données ouverts', 'a_st4': 'Part du budget éducation - en chute',
+        'a_exp_kicker': 'Quatre vues, une décision', 'a_exp_h2': 'Explorez le tableau de bord',
+        'a_vue': 'Vue',
+        'a_d1': "6 indicateurs vitaux avec tendance 10 ans, entonnoir éducatif et lien budget ↔ résultats.",
+        'a_d2': "15 454 écoles et 10 228 toilettes cartographiées, cartes thématiques par région et préfecture, projets COSO.",
+        'a_d3': "Matrice région × indicateur, profils comparés et classement par score composite de vulnérabilité.",
+        'a_d4': "Écart au BEPC par région depuis 2011 et féminisation du corps enseignant préscolaire (91,8 %).",
+        'a_go1': 'Ouvrir la vue', 'a_go2': 'Ouvrir la carte',
+        'a_go3': 'Comparer les régions', 'a_go4': 'Analyser la parité',
+        'a_d5': "Six recommandations chiffrées tirées des quatre vues : où agir, comment, et avec quel indicateur de suivi.",
+        'a_go5': 'Lire les recommandations',
+    },
+    'en': {
+        'nav1': 'National overview', 'nav2': 'Infrastructure mapping',
+        'nav3': 'Regional disparities', 'nav4': 'Girl-boy parity',
+        'nav5': 'Recommendations',
+        'desc5': 'What the data demands: six recommendations drawn from the four views',
+        'prio1': 'Priority 1 · act now', 'prio2': 'Priority 2 · structure',
+        'prio3': 'Priority 3 · consolidate',
+        'reco_constat': 'Finding', 'reco_actions': 'Recommended actions',
+        'reco_suivi': 'Tracking indicator',
+        'reco_side_note': 'Synthesis of the lessons from the 4 views — nothing to filter here.',
+        'desc1': 'State of the Togolese education system: key indicators, student flows and funding',
+        'desc2': 'School coverage of the territory and COSO investments',
+        'desc3': 'Regional school performance compared: identifying lagging territories',
+        'desc4': 'Gender equality in education: BEPC results and teaching staff',
+        'filtres': 'Analysis filters', 'filtres_sub': 'Refine the data of the active tab',
+        'periode': 'Period', 'territoire': 'Territory (drill-down)',
+        'periode_pop': 'Period and population', 'terr_periode': 'Territory and period',
+        'annee_ref': 'Reference year', 'annee': 'Year', 'region': 'Region',
+        'prefecture': 'Prefecture', 'commune': 'Municipality', 'sexe': 'Gender',
+        'region_bepc': 'Region (BEPC curves)',
+        'toutes_regions': 'All regions', 'toutes_prefs': 'All prefectures',
+        'toutes_communes': 'All municipalities', 'derniere': 'Latest available',
+        'choisir_pref': 'Choose a prefecture first',
+        'appliquer': 'Apply', 'sources': 'Sources', 'accueil': 'Home',
+        'pdf_btn': 'Methodology note (PDF)',
+        'donnees_src': 'INSEED / MEPS data', 'chargement': 'Loading data...',
+        'tt_theme': 'Dark / light mode', 'tt_menu': 'Collapse / expand menu',
+        'tt_dl': 'Export (PNG or CSV)', 'tt_dl_carte': 'Download map as PNG',
+        'tt_grandir': 'Expand', 'tt_lecture': 'Insight',
+        'c_entonnoir': 'Education funnel - Student flows',
+        'seg_entonnoir': 'Funnel', 'seg_evo_flux': 'Trend 2013-2022',
+        'seg_bud_lien': 'Link', 'seg_bud_evo': 'Trend',
+        'c_budget': 'Budget vs Results - budget share and completion by level',
+        'c_evolution': 'Trend 2013-2022 -',
+        'evo_niveau': 'Completion rate by level', 'evo_secteur': 'Number of schools by sector',
+        'seg_niveau': 'Level', 'seg_secteur': 'Sector',
+        'c_tableau': 'Indicators table',
+        'tbl_paren': '(national: Total sector, pivots 2013-2022 · regional: 2014-2022)',
+        'vue': 'View', 'national': 'National', 'par_region': 'By region',
+        'correlations': 'Correlations',
+        'c_carte_pts': 'Map of school infrastructure and COSO projects',
+        'c_carte_thema': 'Thematic map -', 'par': 'by',
+        'carte_points': 'Points map', 'carte_thema': 'Thematic map',
+        'etablissements': 'Schools', 'toilettes_lbl': 'School toilets (ratio',
+        'coso_geo': 'Geolocated COSO projects', 'salles': 'Classrooms (geolocated projects)',
+        'c_types_coso': 'COSO project types', 'geo_paren': 'geolocated projects',
+        'c_statut': 'Progress status',
+        'type_projet': 'Project type', 'tous_types': 'All types',
+        'c_matrice': 'Region × Indicator matrix', 'derniere_annee': 'latest available year',
+        'c_comparateur': 'Regional profile comparator', 'tout_comparer': '- Compare all -',
+        'toutes_label': 'all regions', 'derniere_courte': 'latest year',
+        'c_transition': 'Primary → secondary transition rate over time',
+        'c_classement': 'Regional ranking by composite score',
+        'graphique': 'Chart', 'tableau_ar': 'Years × regions table',
+        'graphique_lbl': 'chart', 'tableau_lbl': 'table',
+        'c_bepc': 'BEPC admission - Girls vs Boys',
+        'c_ecart': 'Girls / Boys gap by region',
+        'c_presco': 'Distribution of preschool teachers',
+        'par_region_sexe': 'By region and gender',
+        'c_top_insp': 'Top 10 local inspectorates - Preschool staff',
+        'hors_agregats': 'excluding aggregates',
+        'k_filles': 'BEPC rate - Girls', 'k_garcons': 'BEPC rate - Boys',
+        'k_ecart': 'Girls - Boys gap', 'pts_depuis': 'pts since 2011',
+        'etait': 'Was', 'en_2011': 'in 2011', 'reduit_de': 'Reduced by',
+        'defaveur': 'pts in 2011 - to the detriment of girls',
+        'enseignants': 'teachers', 'femmes': 'women', 'hommes': 'men',
+        'i_entonnoir': 'The funnel narrows sharply after primary school: out of 100 pupils, 63 complete middle school and 27 high school. The urgency is at middle-school level. Trend view: completion rates of the 3 levels as bars, year by year.',
+        'i_budget': 'Results rise with the budget share up to the 2021 peak (19.4%), then 2022 falls back to 14.7%: the gains are at risk.',
+        'i_evolution': 'Primary plateaus around 88%, middle school is catching up fast (+26 pts), high school has stagnated below 30% for 10 years. Sector view: growth in the school stock is driven by the private sector.',
+        'i_tableau': 'National view (file 06), regional view (files 08/09/10) or correlation matrix between the 2013-2022 national indicators: green means indicators move together, red in opposite directions. CSV export of the displayed view.',
+        'i_carte_pts': 'The South concentrates the schools; COSO projects target the North. Zoom to expand clusters; layers can be toggled at the top right of the map.',
+        'i_carte_thema': 'Choropleth by region or prefecture (geoBoundaries polygons); municipality level as centroid bubbles. Combine with the left-hand filters for drill-down.',
+        'i_types_coso': 'The effort focuses on basic infrastructure: primary school buildings and latrine blocks dominate (86 geolocated projects out of 241). Hover a bar to preview the status pie filtered on that type; click to pin the filter, click again to release.',
+        'i_statut': 'Most projects are at provisional acceptance - very few are fully completed and handed over to communities.',
+        'i_matrice': 'Savanes lags on every indicator: BEPC at 48.9% versus 80.8% in Kara. Dark green cells mark the best region in each column.',
+        'i_comparateur': 'Overlay two regional profiles, or all of them with "Compare all": promotion, transition, BEPC, enrolment and middle-school completion (the last two are national).',
+        'i_transition': 'Lomé-Golfe and Kara pull the transition upwards; Savanes has fallen sharply since 2016.',
+        'i_classement': 'Chart: ranking for the chosen year (green = podium, red = last). Table: score by region and year, 2014-2022 average in the pinned footer.',
+        'i_bepc': 'The pink band shows the gap between the two curves: it narrows slowly but never closes. Change the region in the left-hand filters.',
+        'i_ecart': 'Regions sorted from most unequal to closest to parity. In 2022, Plateaux Ouest (-9.8 pts) and Savanes (-9.7 pts) lead.',
+        'i_presco': 'National view (donut, T.Général row) or breakdown by region and gender. No double counting from file 13.',
+        'i_top_insp': 'Local inspectorates only (T.Général and T.R.* aggregates excluded). Greater Lomé places 6 of the top 10.',
+        'chat_nom': 'Togo Education Assistant', 'chat_statut': 'Online · 2013-2022 data',
+        'chat_bienvenue': 'Hello! I am your assistant for Togo education data. Ask a question or pick a topic:',
+        'chat_placeholder': 'Type your question...',
+        'chat_q1': '📊 High school rate', 'chat_q2': '📍 Priority region', 'chat_q3': '💰 Budget',
+        'chat_q4': '🏗️ COSO project', 'chat_q5': '👩‍🎓 Parity',
+        'chat_tq1': 'What is the high school completion rate?',
+        'chat_tq2': 'Which region is the highest priority?',
+        'chat_tq3': 'How is the education budget evolving?',
+        'chat_tq4': 'What is the COSO project?',
+        'chat_tq5': 'What is the girl-boy gap?',
+        'chat_q6': '🏫 Schools', 'chat_q7': '🧮 Composite score', 'chat_q8': '🔁 Transition',
+        'chat_q9': '👩‍🏫 Preschool', 'chat_q10': '🎓 BEPC 2022',
+        'chat_tq6': 'How many schools does Togo have and how are they distributed by region?',
+        'chat_tq7': 'Which region has the lowest composite score and why?',
+        'chat_tq8': 'What is the primary-to-secondary transition rate?',
+        'chat_tq9': 'How many preschool teachers are there and what share are women?',
+        'chat_tq10': 'What is the BEPC pass rate in 2022?',
+        'a_ouvrir': 'Open the dashboard',
+        'a_kicker': 'Défi Togo AI Lab · Education',
+        'a_h1': 'Ten years of data to <em>steer</em> Togolese schools',
+        'a_p': 'From 2013 to 2022: out of 100 pupils entering primary school, <strong>only 27 complete high school</strong>. This dashboard combines 16 open datasets - 15,454 schools, 241 COSO projects, regional results and girl-boy parity - to show where to act.',
+        'a_cta1': 'Explore the dashboard', 'a_cta2': 'View the map',
+        'a_st1': 'Schools mapped', 'a_st2': 'COSO projects tracked',
+        'a_st3': 'Open datasets', 'a_st4': 'Education budget share - falling',
+        'a_exp_kicker': 'Four views, one decision', 'a_exp_h2': 'Explore the dashboard',
+        'a_vue': 'View',
+        'a_d1': '6 vital indicators with 10-year trends, the education funnel and the budget ↔ results link.',
+        'a_d2': '15,454 schools and 10,228 toilets mapped, thematic maps by region and prefecture, COSO projects.',
+        'a_d3': 'Region × indicator matrix, compared profiles and ranking by composite vulnerability score.',
+        'a_d4': 'BEPC gap by region since 2011 and feminization of preschool teaching staff (91.8%).',
+        'a_go1': 'Open the view', 'a_go2': 'Open the map',
+        'a_go3': 'Compare regions', 'a_go4': 'Analyze parity',
+        'a_d5': 'Six evidence-based recommendations drawn from the four views: where to act, how, and with which tracking indicator.',
+        'a_go5': 'Read the recommendations',
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Onglet 5 : recommandations tirées des enseignements des 4 vues
+# ---------------------------------------------------------------------------
+RECOMMANDATIONS = {
+    'fr': [
+        {'prio': 1, 'icone': 'fa-filter', 'titre': 'Faire du collège la priorité nationale',
+         'constat': "Sur 100 élèves entrés au primaire, 63 achèvent le collège et 27 seulement le lycée ; l'achèvement lycée stagne sous 30 % depuis 10 ans (Vue d'ensemble).",
+         'actions': ["Cibler la transition primaire → secondaire dans les préfectures sous 70 %",
+                     "Réduire les coûts d'accès au collège en zone rurale : kits scolaires, cantines, transport",
+                     "Ouvrir des collèges de proximité dans les cantons qui n'en ont aucun (voir Cartographie)"],
+         'suivi': "Taux d'achèvement collège ≥ 75 % et lycée ≥ 40 % d'ici 2030"},
+        {'prio': 1, 'icone': 'fa-coins', 'titre': "Sanctuariser le financement de l'éducation",
+         'constat': "La part du budget est retombée à 14,7 % en 2022 après le pic de 19,4 % en 2021, alors que les résultats progressent avec la dépense (corrélations, Vue d'ensemble).",
+         'actions': ["Fixer un plancher de 15 à 20 % du budget de l'État (référence Éducation 2030)",
+                     "Flécher les moyens supplémentaires vers le secondaire, maillon faible de l'entonnoir",
+                     "Publier chaque année l'exécution budgétaire par région pour la redevabilité"],
+         'suivi': 'Part du budget ≥ 15 % chaque année, retour vers 19 % d\'ici 2027'},
+        {'prio': 1, 'icone': 'fa-map-marked-alt', 'titre': "Un plan d'urgence pour les Savanes",
+         'constat': "Dernière au score composite, BEPC à 48,9 % contre 80,8 % à Kara, transition en chute depuis 2016 (Disparités régionales).",
+         'actions': ["Allocation péréquée : bonus par élève pour les régions sous la moyenne du score composite",
+                     "Accélérer la remise des ouvrages COSO : 91 remis sur 241 (programme 2022-2026)",
+                     "Primes d'affectation et logements pour stabiliser les enseignants dans le nord"],
+         'suivi': "Écart de score composite Savanes / moyenne nationale divisé par 2 d'ici 2028"},
+        {'prio': 2, 'icone': 'fa-venus-mars', 'titre': "Fermer l'écart filles-garçons au BEPC",
+         'constat': "-5,9 points pour les filles en 2022 (61,1 % vs 67,0 %), jusqu'à -9,8 aux Plateaux Ouest ; l'écart se réduit depuis 2011 (10,6 pts) mais ne se ferme pas (Parité).",
+         'actions': ["Bourses et tutorat pour les filles au collège dans les 3 régions les plus inégalitaires",
+                     "Sensibilisation communautaire contre mariages et grossesses précoces",
+                     "Rééquilibrer les corps enseignants : 91,8 % de femmes au préscolaire, modèles mixtes au secondaire"],
+         'suivi': 'Écart BEPC national ≤ 2 pts en 2030, aucun écart régional > 5 pts'},
+        {'prio': 2, 'icone': 'fa-school', 'titre': "Mettre à niveau l'école existante",
+         'constat': "0,66 bloc de toilettes par établissement (10 228 pour 15 454 écoles) et 11 bibliothèques recensées dans tout le pays (Cartographie).",
+         'actions': ["Programme WASH : un bloc sanitaire par école, filles / garçons séparés",
+                     "Étendre le modèle COSO (bâtiment + latrines) aux préfectures denses du sud sous-équipées",
+                     "Un point lecture par inspection comme première marche vers de vraies bibliothèques"],
+         'suivi': "Ratio toilettes / école ≥ 1 et 50 bibliothèques d'ici 2028"},
+        {'prio': 3, 'icone': 'fa-database', 'titre': 'Piloter avec des données fraîches',
+         'constat': "Le taux de promotion s'arrête en 2019, les statistiques du secondaire datent de 2015, le préscolaire n'a qu'une année de données (sources du dashboard).",
+         'actions': ["Reprendre la publication annuelle des séries interrompues (promotion, secondaire)",
+                     "Harmoniser les noms de régions entre jeux de données (Lomé-Golfe / Golfe Lomé…)",
+                     "Publier en open data avec un délai maximal d'un an"],
+         'suivi': '100 % des séries clés à jour à N-1 dès 2027'},
+    ],
+    'en': [
+        {'prio': 1, 'icone': 'fa-filter', 'titre': 'Make middle school the national priority',
+         'constat': 'Out of 100 pupils entering primary school, 63 complete middle school and only 27 high school; high-school completion has stagnated below 30% for 10 years (Overview).',
+         'actions': ['Target the primary → secondary transition in prefectures below 70%',
+                     'Cut the cost of attending middle school in rural areas: school kits, canteens, transport',
+                     'Open local middle schools in cantons that have none (see Mapping)'],
+         'suivi': 'Middle-school completion ≥ 75% and high school ≥ 40% by 2030'},
+        {'prio': 1, 'icone': 'fa-coins', 'titre': 'Protect education funding',
+         'constat': 'The budget share fell back to 14.7% in 2022 after the 19.4% peak of 2021, while results move with spending (correlations, Overview).',
+         'actions': ['Set a floor of 15-20% of the state budget (Education 2030 benchmark)',
+                     'Direct additional resources to secondary education, the weak link of the funnel',
+                     'Publish budget execution by region every year for accountability'],
+         'suivi': 'Budget share ≥ 15% every year, back towards 19% by 2027'},
+        {'prio': 1, 'icone': 'fa-map-marked-alt', 'titre': 'An emergency plan for Savanes',
+         'constat': 'Last on the composite score, BEPC at 48.9% versus 80.8% in Kara, transition falling since 2016 (Regional disparities).',
+         'actions': ['Equalised funding: a per-pupil bonus for regions below the average composite score',
+                     'Speed up COSO handovers: 91 delivered out of 241 (2022-2026 programme)',
+                     'Posting bonuses and housing to retain teachers in the north'],
+         'suivi': 'Savanes composite-score gap to the national average halved by 2028'},
+        {'prio': 2, 'icone': 'fa-venus-mars', 'titre': 'Close the girl-boy gap at the BEPC',
+         'constat': '-5.9 points for girls in 2022 (61.1% vs 67.0%), down to -9.8 in Plateaux Ouest; the gap has narrowed since 2011 (10.6 pts) but never closes (Parity).',
+         'actions': ['Scholarships and tutoring for girls in middle school in the 3 most unequal regions',
+                     'Community campaigns against early marriage and pregnancy',
+                     'Rebalance teaching staff: 91.8% women in preschool, mixed role models in secondary'],
+         'suivi': 'National BEPC gap ≤ 2 pts by 2030, no regional gap > 5 pts'},
+        {'prio': 2, 'icone': 'fa-school', 'titre': 'Upgrade the existing schools',
+         'constat': '0.66 toilet block per school (10,228 for 15,454 schools) and 11 libraries recorded in the whole country (Mapping).',
+         'actions': ['WASH programme: one sanitary block per school, separate for girls and boys',
+                     'Extend the COSO model (building + latrines) to under-equipped dense southern prefectures',
+                     'One reading point per inspectorate as a first step towards real libraries'],
+         'suivi': 'Toilet/school ratio ≥ 1 and 50 libraries by 2028'},
+        {'prio': 3, 'icone': 'fa-database', 'titre': 'Steer with fresh data',
+         'constat': 'The promotion rate stops in 2019, secondary statistics date from 2015, preschool has a single year of data (dashboard sources).',
+         'actions': ['Resume yearly publication of the interrupted series (promotion, secondary)',
+                     'Harmonise region names across datasets (Lomé-Golfe / Golfe Lomé…)',
+                     'Publish open data with a maximum one-year lag'],
+         'suivi': '100% of key series updated to N-1 from 2027'},
+    ],
+}
+
+REGIONS_CARTE = ['Maritime', 'Plateaux', 'Centrale', 'Kara', 'Savanes']
+ANNEES_O1 = list(range(2013, 2023))
+ANNEES_O3 = list(range(2014, 2023))
+ANNEES_O4 = list(range(2011, 2023))
+SEXES = ['Total', 'Féminin', 'Masculin']
+
+# ---------------------------------------------------------------------------
+# Chargement paresseux et unique des données (les CSV ne bougent pas)
+# ---------------------------------------------------------------------------
+_lock = threading.Lock()
+_data: dict = {}
+
+_LOADERS = {
+    'o1': o1.load_onglet1_data,
+    'o2': o2.load_onglet2_data,
+    'o3': o3.load_onglet3_data,
+    'o4': o4.load_onglet4_data,
+}
+
+
+def _dfs(key):
+    with _lock:
+        if key not in _data:
+            _data[key] = _LOADERS[key]()
+        return _data[key]
+
+
+# ---------------------------------------------------------------------------
+# Construction des contenus par onglet (fragments ECharts mis en cache)
+# ---------------------------------------------------------------------------
+@lru_cache(maxsize=32)
+def _tab1_context(annee: int) -> dict:
+    df6 = _dfs('o1')['resultats']
+    dfs3 = _dfs('o3')
+    kpi_rows = o1.get_kpi_data(df6, annee=annee)
+
+    return {
+        'kpi_html': o1.kpi_gauge_html(kpi_rows),
+        'funnel': chart_fragment(o1.sankey_funnel_html(o1.get_funnel_data(df6, annee=annee), annee)),
+        'funnel_evolution': chart_fragment(
+            o1.funnel_evolution_bar_html(o1.get_funnel_evolution_data(df6))),
+        'scatter': chart_fragment(o1.scatter_budget_html(o1.get_scatter_data(df6))),
+        'scatter_evolution': chart_fragment(
+            o1.scatter_budget_evolution_html(o1.get_scatter_data(df6))),
+        # Évolution, deux lectures du fichier 06 :
+        #  - par niveau  : taux d'achèvement (Primaire/Collège/Lycée/Préscolaire)
+        #  - par secteur : nombre d'écoles (Total/Public/Privé), seul détail sectoriel du fichier
+        'evolution_niveau': chart_fragment(o1.evolution_line_html(o1.get_evolution_data(df6), titre='')),
+        'evolution_secteur': chart_fragment(o1.evolution_secteur_html(
+            o1.get_evolution_par_secteur(df6, indicateur="Nombre d'écoles", niveau='Total'))),
+        # Vues du tableau des indicateurs : national + régional (fichiers 08/09/10)
+        'table_total': o1.indicator_table_html(o1.indicator_table(df6, secteur='Total'), root_id='tbl_nat'),
+        'table_correlation': o1.correlation_table_html(df6),
+        'table_regional': o1.regional_indicator_table_html(
+            o1.regional_indicator_table(dfs3['promotion'], dfs3['bepc'], dfs3['transition'])),
+    }
+
+
+@lru_cache(maxsize=1)
+def _territoires() -> dict:
+    """Arbre Région → Préfecture → [Communes] (fichier 01), calculé une fois."""
+    return o2.get_territoires(_dfs('o2'))
+
+
+def _valider_territoire(region, pref, commune):
+    """Valide la cascade : une préfecture doit appartenir à la région choisie,
+    une commune à la préfecture choisie. Retourne (region, pref, commune) sûrs."""
+    arbre = _territoires()
+    if region not in arbre:
+        region = 'Toutes'
+    prefs_valides = arbre.get(region, {}) if region != 'Toutes' else {
+        p: c for prefs in arbre.values() for p, c in prefs.items()
+    }
+    if pref not in prefs_valides:
+        pref = 'Toutes'
+    communes_valides = prefs_valides.get(pref, []) if pref != 'Toutes' else []
+    if commune not in communes_valides:
+        commune = 'Toutes'
+    return region, pref, commune
+
+
+def _args_territoire(region, pref, commune):
+    """Convertit les valeurs de filtre en arguments pour modules_visu."""
+    return {
+        'regions': [region] if region != 'Toutes' else None,
+        'prefecture': pref if pref != 'Toutes' else None,
+        'commune': commune if commune != 'Toutes' else None,
+    }
+
+
+@lru_cache(maxsize=48)
+def _tab2_context(region: str, pref: str, commune: str) -> dict:
+    dfs = _dfs('o2')
+    t = _args_territoire(region, pref, commune)
+    counters = o2.get_counters(dfs, **t)
+    type_rows, status_rows = o2.get_coso_aggregation(dfs, **t)
+    return {
+        'counters': counters,
+        'coso_croise': o2.get_coso_croise(dfs, **t),
+        'coso_bar': chart_fragment(o2.coso_type_bar_html(type_rows)) if type_rows else '<p style="padding:20px;color:#A0AEC0">Aucun projet COSO géolocalisé sur ce territoire.</p>',
+        'coso_pie': chart_fragment(o2.coso_status_pie_html(status_rows)) if status_rows else '<p style="padding:20px;color:#A0AEC0">Aucun projet COSO géolocalisé sur ce territoire.</p>',
+    }
+
+
+# Fonction d'export PNG injectée dans les pages carte, appelée depuis le bouton
+# de la card parente (iframe même origine). Capture html2canvas : attente du
+# chargement complet des tuiles, puis capture du document recadrée sur la carte
+# (évite les décalages liés aux transforms Leaflet).
+_PNG_EXPORT_SNIPPET = """
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function _attendreTuiles(maxMs){
+  return new Promise(function(resolve){
+    var debut = Date.now();
+    (function verifier(){
+      var enCours = document.querySelectorAll('img.leaflet-tile:not(.leaflet-tile-loaded)').length;
+      if (enCours === 0 || Date.now() - debut > maxMs) return resolve();
+      setTimeout(verifier, 200);
+    })();
+  });
+}
+
+/* html2canvas gère mal les transform CSS de Leaflet : on convertit temporairement
+   chaque TRANSLATION pure en position left/top équivalente, sur TOUTE la hiérarchie
+   (conteneur principal — décalé après un fit_bounds —, conteneurs de tuiles, tuiles,
+   calques vectoriels, marqueurs), puis on restaure après la capture.
+   Les transformations d'échelle (zoom en cours) ne sont pas touchées. */
+function _neutraliserTransforms(){
+  var cibles = document.querySelectorAll(
+    '.leaflet-map-pane, .leaflet-tile-container, img.leaflet-tile, ' +
+    '.leaflet-overlay-pane svg, .leaflet-overlay-pane canvas, ' +
+    '.leaflet-marker-pane .leaflet-marker-icon, .leaflet-shadow-pane img'
+  );
+  var etats = [];
+  cibles.forEach(function(el){
+    var cs = getComputedStyle(el);
+    var m = (cs.transform || '').match(/matrix\\(([^)]+)\\)/);
+    if (!m) return;
+    var p = m[1].split(',').map(parseFloat);
+    /* Translation pure uniquement : matrix(1, 0, 0, 1, tx, ty) */
+    if (Math.abs(p[0] - 1) > 0.001 || Math.abs(p[1]) > 0.001 ||
+        Math.abs(p[2]) > 0.001 || Math.abs(p[3] - 1) > 0.001) return;
+    var tx = p[4] || 0, ty = p[5] || 0;
+    etats.push({el: el, transform: el.style.transform, left: el.style.left, top: el.style.top});
+    el.style.transform = 'none';
+    el.style.left = ((parseFloat(cs.left) || 0) + tx) + 'px';
+    el.style.top = ((parseFloat(cs.top) || 0) + ty) + 'px';
+  });
+  return etats;
+}
+function _restaurerTransforms(etats){
+  etats.forEach(function(e){
+    e.el.style.transform = e.transform;
+    e.el.style.left = e.left;
+    e.el.style.top = e.top;
+  });
+}
+
+function telechargerCartePng(){
+  var el = document.querySelector('.folium-map') || document.body;
+  var etats = [];
+  return _attendreTuiles(4000).then(function(){
+    etats = _neutraliserTransforms();
+    var rect = el.getBoundingClientRect();
+    return html2canvas(document.body, {
+      useCORS: true,
+      scale: 2,
+      backgroundColor: '#ffffff',
+      imageTimeout: 15000,
+      x: rect.left + window.scrollX,
+      y: rect.top + window.scrollY,
+      width: rect.width,
+      height: rect.height,
+      windowWidth: document.documentElement.clientWidth,
+      windowHeight: document.documentElement.clientHeight
+    });
+  }).then(function(canvas){
+    _restaurerTransforms(etats);
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'carte-togo.png';
+    a.click();
+  }).catch(function(e){
+    _restaurerTransforms(etats);
+    alert('Export impossible : ' + e);
+  });
+}
+</script>
+"""
+
+
+def _avec_export_png(html: str) -> str:
+    return html.replace('</body>', _PNG_EXPORT_SNIPPET + '</body>')
+
+
+@lru_cache(maxsize=24)
+def _carte_html(region: str, pref: str, commune: str) -> str:
+    dfs = _dfs('o2')
+    m = o2.build_carte_interactive(dfs, **_args_territoire(region, pref, commune))
+    return _avec_export_png(m.get_root().render())
+
+
+IND_THEMA = list(o2.INDICATEURS_THEMA.keys())      # ecoles / toilettes / ratio
+NIV_THEMA = list(o2.NIVEAUX_THEMA.keys())          # region / prefecture / commune
+
+
+@lru_cache(maxsize=64)
+def _carte_thema_html(region: str, pref: str, commune: str, ind: str, niv: str) -> str:
+    dfs = _dfs('o2')
+    m = o2.carte_thematique(dfs, indicateur=ind, niveau=niv,
+                            **_args_territoire(region, pref, commune))
+    return _avec_export_png(m.get_root().render())
+
+
+
+
+@lru_cache(maxsize=64)
+def _tab3_context(annee, sexe: str, region_a: str, region_b: str) -> dict:
+    dfs = _dfs('o3')
+    return {
+        'heatmap': o3.heatmap_table_html(dfs, annee=annee, sexe=sexe),
+        'radar': chart_fragment(o3.radar_comparison_html(dfs, region_a=region_a, region_b=region_b, annee=annee, sexe=sexe)),
+        'ranking_bar': chart_fragment(o3.ranking_bar_html(dfs, annee=annee, sexe=sexe)),
+        'ranking_matrice': o3.ranking_matrix_html(dfs, sexe=sexe),
+        'evol_transition': chart_fragment(o3.evolution_line_html(dfs, indicateur='transition', sexe=sexe)),
+    }
+
+
+@lru_cache(maxsize=64)
+def _tab4_context(region: str, annee: int) -> dict:
+    dfs = _dfs('o4')
+    rows = o4.get_ecart_regional(dfs, annee=annee)
+    rows_2011 = o4.get_ecart_regional(dfs, annee=2011)
+    togo = next((r for r in rows if r['region'] == 'Togo'), {})
+    togo11 = next((r for r in rows_2011 if r['region'] == 'Togo'), {})
+
+    def _delta(a, b):
+        if a is None or b is None:
+            return None
+        return round(a - b, 1)
+
+    kpis = {
+        'filles': togo.get('Féminin'),
+        'garcons': togo.get('Masculin'),
+        'ecart': togo.get('ecart'),
+        'filles_2011': togo11.get('Féminin'),
+        'garcons_2011': togo11.get('Masculin'),
+        'ecart_2011': togo11.get('ecart'),
+        'evol_filles': _delta(togo.get('Féminin'), togo11.get('Féminin')),
+        'evol_garcons': _delta(togo.get('Masculin'), togo11.get('Masculin')),
+        'evol_ecart': _delta(togo11.get('ecart'), togo.get('ecart')),
+    }
+    presco = o4.get_prescolaire_data(dfs)
+    return {
+        'kpis': kpis,
+        'presco': presco,
+        'bepc_lines': chart_fragment(o4.bepc_evolution_html(dfs, region=region)),
+        'ecart_bars': chart_fragment(o4.ecart_bar_html(dfs, annee=annee)),
+        'presco_pie': chart_fragment(o4.prescolaire_pie_html(dfs)),
+        'presco_table': o4.prescolaire_table_html(dfs),
+        'top_insp': chart_fragment(o4.top_inspections_bar_html(dfs)),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Assistant IA (package agent_ia) : un agent par session de navigateur
+# ---------------------------------------------------------------------------
+_agents = {}
+_agents_verrou = threading.Lock()
+_AGENTS_MAX = 30
+
+
+def _agent_pour(session_id):
+    with _agents_verrou:
+        if session_id not in _agents:
+            if len(_agents) >= _AGENTS_MAX:
+                _agents.pop(next(iter(_agents)))   # éviction du plus ancien
+            _agents[session_id] = agent_ia.AgentEducation()
+        return _agents[session_id]
+
+
+def _md_inline(ligne):
+    """Gras / italique / code sur une ligne déjà échappée HTML."""
+    ligne = html_std.escape(ligne, quote=False)
+    ligne = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', ligne)
+    ligne = re.sub(r'(?<!\*)\*([^*\n]+)\*(?!\*)', r'<em>\1</em>', ligne)
+    ligne = re.sub(r'`([^`]+)`', r'<code>\1</code>', ligne)
+    return ligne
+
+
+def _md_table(bloc):
+    rangees = []
+    for ligne in bloc:
+        cellules = [c.strip() for c in ligne.strip().strip('|').split('|')]
+        if cellules and all(re.fullmatch(r':?-{2,}:?', c) for c in cellules if c):
+            continue   # ligne de séparation |---|---|
+        rangees.append(cellules)
+    if not rangees:
+        return ''
+    corps = ['<table class="chat-table"><thead><tr>'
+             + ''.join(f'<th>{_md_inline(c)}</th>' for c in rangees[0])
+             + '</tr></thead><tbody>']
+    for r in rangees[1:]:
+        corps.append('<tr>' + ''.join(f'<td>{_md_inline(c)}</td>' for c in r) + '</tr>')
+    corps.append('</tbody></table>')
+    return ''.join(corps)
+
+
+def _md_en_html(texte):
+    """Convertit le markdown de l'agent (tableaux, gras, listes) en HTML sûr."""
+    lignes = str(texte).split('\n')
+    sortie, i, en_liste = [], 0, False
+    while i < len(lignes):
+        ligne = lignes[i]
+        if ligne.strip().startswith('|') and ligne.count('|') >= 2:
+            if en_liste:
+                sortie.append('</ul>')
+                en_liste = False
+            bloc = []
+            while i < len(lignes) and lignes[i].strip().startswith('|'):
+                bloc.append(lignes[i])
+                i += 1
+            sortie.append(_md_table(bloc))
+            continue
+        if re.match(r'^\s*[-•*]\s+', ligne):
+            if not en_liste:
+                sortie.append('<ul>')
+                en_liste = True
+            sortie.append('<li>' + _md_inline(re.sub(r'^\s*[-•*]\s+', '', ligne)) + '</li>')
+            i += 1
+            continue
+        if en_liste:
+            sortie.append('</ul>')
+            en_liste = False
+        if ligne.strip():
+            sortie.append('<p>' + _md_inline(ligne) + '</p>')
+        i += 1
+    if en_liste:
+        sortie.append('</ul>')
+    return ''.join(sortie)
+
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    donnees = request.get_json(silent=True) or {}
+    question = str(donnees.get('question', '')).strip()[:500]
+    if not question:
+        return jsonify({'erreur': 'question vide'}), 400
+    session_id = str(donnees.get('session', 'defaut'))[:64]
+    try:
+        resultat = _agent_pour(session_id).repondre(question)
+    except Exception as e:  # noqa: BLE001 — le client bascule sur les réponses locales
+        return jsonify({'erreur': f'{type(e).__name__}: {str(e)[:200]}'}), 500
+    contenu = _md_en_html(resultat['reponse'])
+    # Les marqueurs [GRAPHIQUE_n] deviennent de vrais fragments ECharts
+    for cle, fragment in (resultat.get('graphiques') or {}).items():
+        contenu = contenu.replace(f'[{cle}]', fragment)
+    return jsonify({'html': contenu, 'route': resultat['route'],
+                    'iterations': resultat['iterations']})
+
+
+def _langue():
+    v = request.args.get('lang', 'fr')
+    return v if v in TRADUCTIONS else 'fr'
+
+
+@app.route('/')
+def accueil():
+    lang = _langue()
+    return render_template('accueil.html', lang=lang, t=TRADUCTIONS[lang])
+
+
+@app.route('/dashboard')
+def dashboard():
+    try:
+        tab = int(request.args.get('tab', 1))
+    except ValueError:
+        tab = 1
+    if tab not in (1, 2, 3, 4, 5):
+        tab = 1
+
+    def _int_arg(name, default, allowed):
+        try:
+            v = int(request.args.get(name, default))
+        except (TypeError, ValueError):
+            return default
+        return v if v in allowed else default
+
+    def _str_arg(name, default, allowed):
+        v = request.args.get(name, default)
+        return v if v in allowed else default
+
+    lang = _langue()
+    ctx = {
+        'tab': tab,
+        'lang': lang,
+        't': TRADUCTIONS[lang],
+        'annees_o1': ANNEES_O1,
+        'annees_o3': ANNEES_O3,
+        'annees_o4': ANNEES_O4,
+        'sexes': SEXES,
+        'regions_carte': REGIONS_CARTE,
+        'regions_o3': REGIONS_O3,
+        'regions_o4': REGIONS_09_SIMPLE,
+    }
+
+    if tab == 1:
+        annee = _int_arg('annee', 2022, ANNEES_O1)
+        ctx.update(annee=annee, **_tab1_context(annee))
+    elif tab == 2:
+        region, pref, commune = _valider_territoire(
+            request.args.get('region', 'Toutes'),
+            request.args.get('pref', 'Toutes'),
+            request.args.get('commune', 'Toutes'))
+        vue = _str_arg('vue', 'points', ['points', 'thema'])
+        ind = _str_arg('ind', 'ecoles', IND_THEMA)
+        niv = _str_arg('niv', 'region', NIV_THEMA)
+
+        arbre = _territoires()
+        prefectures = sorted(arbre.get(region, {}).keys()) if region != 'Toutes' else \
+            sorted({p for prefs in arbre.values() for p in prefs})
+        communes = sorted(arbre.get(region, {}).get(pref, [])) if pref != 'Toutes' and region != 'Toutes' else \
+            (sorted(next((prefs[pref] for prefs in arbre.values() if pref in prefs), [])) if pref != 'Toutes' else [])
+
+        morceaux = [v for v in (region, pref, commune) if v != 'Toutes']
+        territoire_label = ' › '.join(morceaux) if morceaux else 'toutes les régions'
+
+        ctx.update(region=region, pref=pref, commune=commune,
+                   prefectures=prefectures, communes=communes,
+                   territoire_label=territoire_label,
+                   vue=vue, ind=ind, niv=niv,
+                   ind_labels=o2.INDICATEURS_THEMA, niv_labels=o2.NIVEAUX_THEMA,
+                   **_tab2_context(region, pref, commune))
+    elif tab == 3:
+        annee_raw = request.args.get('annee', '')
+        annee = int(annee_raw) if annee_raw.isdigit() and int(annee_raw) in ANNEES_O3 else None
+        sexe = _str_arg('sexe', 'Total', SEXES)
+        ra = _str_arg('ra', 'Kara', REGIONS_O3 + ['Toutes'])
+        rb = _str_arg('rb', 'Savanes', REGIONS_O3 + ['Toutes'])
+        ctx.update(annee=annee, sexe=sexe, ra=ra, rb=rb,
+                   **_tab3_context(annee, sexe, ra, rb))
+    elif tab == 4:
+        region = _str_arg('region', 'Togo', REGIONS_09_SIMPLE)
+        annee = _int_arg('annee', 2022, ANNEES_O4)
+        ctx.update(region=region, annee=annee, **_tab4_context(region, annee))
+    elif tab == 5:
+        ctx.update(recos=RECOMMANDATIONS[lang])
+
+    return render_template('dashboard.html', **ctx)
+
+
+@app.route('/carte')
+def carte():
+    region, pref, commune = _valider_territoire(
+        request.args.get('region', 'Toutes'),
+        request.args.get('pref', 'Toutes'),
+        request.args.get('commune', 'Toutes'))
+    return Response(_carte_html(region, pref, commune), mimetype='text/html')
+
+
+@app.route('/carte-thematique')
+def carte_thematique():
+    region, pref, commune = _valider_territoire(
+        request.args.get('region', 'Toutes'),
+        request.args.get('pref', 'Toutes'),
+        request.args.get('commune', 'Toutes'))
+    ind = request.args.get('ind', 'ecoles')
+    if ind not in IND_THEMA:
+        ind = 'ecoles'
+    niv = request.args.get('niv', 'region')
+    if niv not in NIV_THEMA:
+        niv = 'region'
+    return Response(_carte_thema_html(region, pref, commune, ind, niv), mimetype='text/html')
+
+
+# ---------------------------------------------------------------------------
+# Préchauffage : les vues par défaut de chaque onglet sont construites en
+# arrière-plan dès le démarrage, pour que le premier visiteur ne paie pas la
+# génération (la carte folium seule prend plusieurs secondes).
+# ---------------------------------------------------------------------------
+def _prechauffer_caches():
+    etapes = (
+        lambda: _tab1_context(2022),
+        lambda: _tab3_context(None, 'Total', 'Kara', 'Savanes'),
+        lambda: _tab4_context('Togo', 2022),
+        _territoires,
+        lambda: _tab2_context('Toutes', 'Toutes', 'Toutes'),
+        lambda: _carte_html('Toutes', 'Toutes', 'Toutes'),
+    )
+    for etape in etapes:
+        try:
+            etape()
+        except Exception as e:  # noqa: BLE001 — le préchauffage ne doit jamais tuer l'app
+            print(f'Préchauffage : étape ignorée ({type(e).__name__}: {e})')
+
+
+threading.Thread(target=_prechauffer_caches, daemon=True).start()
+
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)

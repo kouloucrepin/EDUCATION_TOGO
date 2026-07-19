@@ -1,0 +1,6 @@
+flask>=3.0,<4
+pandas>=2.0,<3
+numpy>=1.26,<3
+pyecharts>=2.0,<3
+folium>=0.19,<1
+gunicorn>=21.0

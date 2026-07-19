@@ -1,0 +1,21 @@
+À partir des données disponibles, votre mission sera d'analyser la couverture scolaire, les infrastructures essentielles, la capacité enseignante et les résultats scolaires afin d'identifier les territoires où les investissements sont les plus prioritaires.
+
+Données disponibles :
+À partir des données libres de geodata.gouv.tg et opendata.gouv.tg :
+· Établissements scolaires : https://lnkd.in/eDtMRQGc
+· Toilettes scolaires : https://lnkd.in/eKgjm2Nr
+· Statut d’électrification des bâtiments scolaires : https://lnkd.in/eJrNjV4u
+· Bibliothèques scolaires : https://lnkd.in/ebDwMv-d
+· Professeurs des établissements scolaires : https://lnkd.in/enqgqur4
+· Education et résultats scolaires : https://lnkd.in/eCH6DZ92
+· Indicateurs d’éducation au Togo : https://lnkd.in/e3qwub6c
+
+À la clé : un dashboard pertinent, des analyses rigoureuses et des recommandations fondées sur les données pour soutenir une prise de décision éclairée.
+
+🏆Les meilleures solutions seront présentées par leurs auteurs lors des lives hebdomadaires du Togo AI Lab.
+
+Ce défi est ouvert à toutes celles et ceux qui souhaitent mettre leurs compétences en analyse de données au service d'une éducation plus équitable au Togo.
+
+Valorisez votre travail : Après la soumission, les participants devront publier un post présentant leur solution en taguant le Togo AI Lab ainsi que les institutions partenaires du secteur de l'éducation. La qualité de cette valorisation fera également partie des critères d'évaluation.
+
+📅 Date limite de soumission : 20 juillet 2026

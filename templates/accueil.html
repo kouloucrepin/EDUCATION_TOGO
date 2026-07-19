@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Togo Éducation - Accueil</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='images/drapeau-togo.png') }}">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=css_v) }}">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+  <div class="header-left">
+    <a class="brand" href="{{ url_for('accueil') }}">
+      <img class="flag" src="{{ url_for('static', filename='images/drapeau-togo.png') }}" alt="Drapeau du Togo">
+      <span class="titre">Togo Éducation <span>| Pilotage</span></span>
+    </a>
+  </div>
+  <div class="header-right">
+    <a class="h-home" href="{{ url_for('dashboard') }}"><i class="fas fa-th-large"></i> {{ t.a_ouvrir }}</a>
+    <button class="h-icon" id="themeToggle" onclick="toggleTheme()" title="{{ t.tt_theme }}"><i class="fas fa-moon"></i></button>
+    <div class="h-lang" title="Français / English">
+      <button class="lang-btn {% if lang == 'fr' %}active{% endif %}" onclick="setLang('fr')"><b>FR</b></button>
+      <span class="lang-sep">|</span>
+      <button class="lang-btn {% if lang == 'en' %}active{% endif %}" onclick="setLang('en')"><b>EN</b></button>
+    </div>
+    <img src="{{ url_for('static', filename='images/armoiries-togo.png') }}" alt="Armoiries du Togo" style="width:34px;height:34px;object-fit:contain">
+  </div>
+</header>
+
+<!-- ===== HERO : diaporama de photos d'écoles togolaises ===== -->
+<section class="hero">
+  <!-- Chaque diapositive : photo (si présente) par-dessus un visuel SVG local
+       généré aux couleurs du Togo — l'animation reste opérationnelle sans réseau -->
+  <div class="hero-slides" id="heroSlides">
+    <div class="hero-slide active" style="background-image:url('{{ url_for('static', filename='images/ecole-1.jpg') }}'), url('{{ url_for('static', filename='images/hero-1.svg') }}')"></div>
+    <div class="hero-slide" style="background-image:url('{{ url_for('static', filename='images/ecole-2.jpg') }}'), url('{{ url_for('static', filename='images/hero-2.svg') }}')"></div>
+    <div class="hero-slide" style="background-image:url('{{ url_for('static', filename='images/ecole-3.jpg') }}'), url('{{ url_for('static', filename='images/hero-3.svg') }}')"></div>
+  </div>
+  <div class="hero-inner">
+    <span class="kicker">{{ t.a_kicker }}</span>
+    <h1>{{ t.a_h1 | safe }}</h1>
+    <p>{{ t.a_p | safe }}</p>
+    <div class="hero-ctas">
+      <a class="btn-primary" href="{{ url_for('dashboard') }}">{{ t.a_cta1 }} <i class="fas fa-arrow-right"></i></a>
+      <a class="btn-ghost" href="{{ url_for('dashboard', tab=2) }}"><i class="fas fa-map-marked-alt"></i> {{ t.a_cta2 }}</a>
+    </div>
+  </div>
+  <div class="hero-dots">
+    <button class="hero-dot active" onclick="goSlide(0)" aria-label="Photo 1"></button>
+    <button class="hero-dot" onclick="goSlide(1)" aria-label="Photo 2"></button>
+    <button class="hero-dot" onclick="goSlide(2)" aria-label="Photo 3"></button>
+  </div>
+</section>
+
+<!-- ===== BANDEAU CHIFFRES ===== -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="stat-item"><i class="fas fa-school"></i><div><div class="st-num">15 454</div><div class="st-lbl">{{ t.a_st1 }}</div></div></div>
+    <div class="stat-item"><i class="fas fa-hard-hat"></i><div><div class="st-num">241</div><div class="st-lbl">{{ t.a_st2 }}</div></div></div>
+    <div class="stat-item"><i class="fas fa-database"></i><div><div class="st-num">16</div><div class="st-lbl">{{ t.a_st3 }}</div></div></div>
+    <div class="stat-item alerte"><i class="fas fa-percent"></i><div><div class="st-num">14,7 %</div><div class="st-lbl">{{ t.a_st4 }}</div></div></div>
+  </div>
+</div>
+
+<!-- ===== LES 4 VUES ===== -->
+<section class="explore">
+  <div class="explore-head">
+    <span class="kicker">{{ t.a_exp_kicker }}</span>
+    <h2>{{ t.a_exp_h2 }}</h2>
+  </div>
+  <div class="cards-grid">
+    <a class="tab-card" href="{{ url_for('dashboard', tab=1) }}" style="--accent:#006A4E">
+      <div class="tc-icon"><i class="fas fa-chart-pie"></i></div>
+      <span class="tc-num">{{ t.a_vue }} 01</span>
+      <span class="tc-title">{{ t.nav1 }}</span>
+      <span class="tc-desc">{{ t.a_d1 }}</span>
+      <span class="tc-go">{{ t.a_go1 }} <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a class="tab-card" href="{{ url_for('dashboard', tab=2) }}" style="--accent:#B8860B">
+      <div class="tc-icon"><i class="fas fa-map-marked-alt"></i></div>
+      <span class="tc-num">{{ t.a_vue }} 02</span>
+      <span class="tc-title">{{ t.nav2 }}</span>
+      <span class="tc-desc">{{ t.a_d2 }}</span>
+      <span class="tc-go">{{ t.a_go2 }} <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a class="tab-card" href="{{ url_for('dashboard', tab=3) }}" style="--accent:#0033A0">
+      <div class="tc-icon"><i class="fas fa-balance-scale"></i></div>
+      <span class="tc-num">{{ t.a_vue }} 03</span>
+      <span class="tc-title">{{ t.nav3 }}</span>
+      <span class="tc-desc">{{ t.a_d3 }}</span>
+      <span class="tc-go">{{ t.a_go3 }} <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a class="tab-card" href="{{ url_for('dashboard', tab=4) }}" style="--accent:#D53F8C">
+      <div class="tc-icon"><i class="fas fa-venus-mars"></i></div>
+      <span class="tc-num">{{ t.a_vue }} 04</span>
+      <span class="tc-title">{{ t.nav4 }}</span>
+      <span class="tc-desc">{{ t.a_d4 }}</span>
+      <span class="tc-go">{{ t.a_go4 }} <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a class="tab-card" href="{{ url_for('dashboard', tab=5) }}" style="--accent:#EF3340">
+      <div class="tc-icon"><i class="fas fa-lightbulb"></i></div>
+      <span class="tc-num">{{ t.a_vue }} 05</span>
+      <span class="tc-title">{{ t.nav5 }}</span>
+      <span class="tc-desc">{{ t.a_d5 }}</span>
+      <span class="tc-go">{{ t.a_go5 }} <i class="fas fa-arrow-right"></i></span>
+    </a>
+  </div>
+</section>
+
+<!-- Voile de chargement (navigation vers le dashboard) -->
+<div id="chargement" class="chargement" aria-hidden="true">
+  <div class="spin"></div>
+  <div class="txt">{{ t.chargement }}</div>
+</div>
+
+<script>
+/* Voile de chargement : affiché à chaque navigation interne */
+function montrerChargement(){
+  const c = document.getElementById('chargement');
+  if (c) c.classList.add('show');
+}
+const LANG = '{{ lang }}';
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (!href || href.startsWith('#') || a.target === '_blank' || a.hasAttribute('download')) return;
+  if (href.startsWith('http') && !href.includes(location.host)) return;
+  if (LANG !== 'fr') {
+    try {
+      const u = new URL(a.href, location.origin);
+      if (!u.searchParams.has('lang')) {
+        u.searchParams.set('lang', LANG);
+        a.href = u.pathname + u.search + u.hash;
+      }
+    } catch (_) { /* URL non analysable : navigation inchangée */ }
+  }
+  montrerChargement();
+});
+window.addEventListener('pageshow', () => {
+  const c = document.getElementById('chargement');
+  if (c) c.classList.remove('show');
+});
+
+/* Diaporama du héros */
+const slides = [...document.querySelectorAll('.hero-slide')];
+const dots = [...document.querySelectorAll('.hero-dot')];
+let current = 0, timer = null;
+
+function goSlide(i){
+  current = (i + slides.length) % slides.length;
+  slides.forEach((s, k) => s.classList.toggle('active', k === current));
+  dots.forEach((d, k) => d.classList.toggle('active', k === current));
+  restart();
+}
+function restart(){
+  clearInterval(timer);
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    timer = setInterval(() => goSlide(current + 1), 6000);
+  }
+}
+restart();
+
+/* Bascule de langue : recharge la page dans la langue choisie */
+function setLang(code){
+  if (code === LANG) return;
+  const u = new URL(location.href);
+  if (code === 'fr') u.searchParams.delete('lang');
+  else u.searchParams.set('lang', code);
+  montrerChargement();
+  location.href = u.pathname + u.search + u.hash;
+}
+/* Thème clair / sombre (partagé avec le dashboard via localStorage) */
+function applyTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+  localStorage.setItem('tg-theme', dark ? 'dark' : 'light');
+}
+function toggleTheme(){ applyTheme(!document.body.classList.contains('dark')); }
+applyTheme(localStorage.getItem('tg-theme') === 'dark');
+</script>
+</body>
+</html>

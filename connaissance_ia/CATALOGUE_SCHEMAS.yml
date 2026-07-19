@@ -1,0 +1,138 @@
+# Catalogue des DataFrames pour l'agent text-to-Python (injecté dans le prompt système)
+catalogue:
+
+  "06":
+    df: dfs['06']
+    description: Résultats scolaires nationaux 2013-2022 (fichier central). NE JAMAIS SOMMER les lignes — les totaux existent déjà (niveau=='Total', secteur=='Total') ; sommer mélange les agrégats et double les chiffres. Toujours SÉLECTIONNER la ligne voulue.
+    observations: 481
+    colonnes:
+      indicateurs: {type: str, desc: "Nombre d'écoles | Nombre d'enseignants | Dépenses annuelles d'éducation | Part du Budget alloué à l'éducation (%) | Taux d'achèvement ou de diplomation | Taux de scolarisation…"}
+      niveau:      {type: str, desc: "Total | Jardins d'enfants | Primaire | Collège | Lycée"}
+      secteur:     {type: str, desc: "Total | Public | Autres (Privés…) — toujours filtrer secteur=='Total' sauf question sectorielle"}
+      Date:        {type: int, desc: "année 2013-2022"}
+      Value:       {type: float, desc: "valeur (dépenses en FCFA bruts)"}
+
+  "08":
+    df: dfs['08']
+    description: Taux de promotion au primaire par région et sexe (%)
+    observations: 126
+    colonnes:
+      région: {type: str, desc: "colonne AVEC accent. TOGO (national, exclure des comparaisons) | Lomé-Golfe | Maritime | Plateaux | Centrale | Kara | Savanes"}
+      sexe:   {type: str, desc: "Total | Masculin | Féminin"}
+      Date:   {type: int, desc: "ATTENTION série 2014-2019 seulement"}
+      Value:  {type: float, desc: "taux en %"}
+
+  "09":
+    df: dfs['09']
+    description: Admission au BEPC par région et sexe, 2011-2022 (%)
+    observations: 255
+    colonnes:
+      région: {type: str, desc: "AVEC accent. Togo (national) | Lomé-Golfe | Maritime | Plateaux | Centrale | Kara | Savanes — Plateaux se scinde en Plateaux Ouest/Est à partir de 2022"}
+      sexe:   {type: str, desc: "Total | Masculin | Féminin — écart filles-garçons = Féminin − Masculin (négatif = défaveur filles)"}
+      Date:   {type: int, desc: "année 2011-2022"}
+      Value:  {type: float, desc: "taux d'admission en %"}
+
+  "10":
+    df: dfs['10']
+    description: Taux de transition primaire→secondaire par région et sexe, 2014-2022 (%) — même structure que "09"
+    observations: 192
+    colonnes:
+      région: {type: str, desc: "AVEC accent, Togo = national"}
+      sexe:   {type: str, desc: "Total | Masculin | Féminin"}
+      Date:   {type: int, desc: "année 2014-2022"}
+      Value:  {type: float, desc: "taux en %"}
+
+  "12":
+    df: dfs['12']
+    description: Statistiques du secondaire — UNE SEULE année (2015)
+    observations: 154
+    colonnes:
+      indicateur: {type: str, desc: "Nombre Etablissements | Nombre de salles de classe | Nombre Elèves | Nombre Enseignants"}
+      secteur:    {type: str, desc: "ici = niveau : Collège | Lycée"}
+      type-salle: {type: str, desc: "Total | Dur | Banco | Autres (pertinent pour les salles)"}
+      region:     {type: str, desc: "SANS accent. Togo | Golfe Lomé (ordre inversé vs 08-10) | Maritime | Plateaux | Centrale | Kara | Savanes"}
+      sexe:       {type: str, desc: "Total | Masculin | Féminin"}
+      Value:      {type: int, desc: "effectif"}
+
+  "13":
+    df: dfs['13']
+    description: Enseignants du préscolaire par inspection, 2021-2022 — HIÉRARCHIQUE
+    observations: 210
+    colonnes:
+      inspections: {type: str, desc: "NE JAMAIS sommer toute la colonne (T.Général + T.R.* + locales = triple comptage, 23 406 au lieu de 7 802). Total national = 'T.Général' (7 802, 91,8 % de femmes) · régions = 'T.R.*' · classement local = exclure T.Général et T.R.*"}
+      sexe:        {type: str, desc: "Total | Masculin | Féminin"}
+      Value:       {type: int, desc: "effectif"}
+
+  "01":
+    df: dfs['01']
+    description: Écoles géolocalisées (1 ligne = 1 établissement)
+    observations: 15454
+    colonnes:
+      region_nom_bdd:          {type: str, desc: "5 régions — pas de Lomé-Golfe (incluse dans Maritime)"}
+      prefecture_nom_bdd:      {type: str, desc: "39 préfectures"}
+      commune_nom_bdd:         {type: str, desc: "117 communes"}
+      canton_nom_bdd:          {type: str, desc: "395 cantons"}
+      etablissement_categorie: {type: str, desc: "Ecole primaire | Jardin (maternelle) | College | Lycée…"}
+      geometry:                {type: str, desc: "POINT (lon lat) en WKT · manquants en texte : Nsp, N/a, Néant"}
+
+  "02":
+    df: dfs['02']
+    description: Toilettes scolaires géolocalisées — colonnes admin identiques à "01"
+    observations: 10228
+    colonnes:
+      toilette_type: {type: str, desc: "{Latrines a eau} | {Latrines seches} | {WCs} | {Pissotieres}…"}
+
+  "03":
+    df: dfs['03']
+    description: Bâtiments scolaires (polygones) — colonnes admin identiques à "01"
+    observations: 28055
+    colonnes:
+      batiment_fonction: {type: str, desc: "Salle de classe | Bureau…"}
+      batiment_annee:    {type: str, desc: "mélange int et 'Nsp' → pd.to_numeric(..., errors='coerce')"}
+
+  "04":
+    df: dfs['04']
+    description: Bibliothèques scolaires — le chiffre clé est la rareté (11 seulement)
+    observations: 11
+
+  "14":
+    df: dfs['14']
+    description: Microprojets COSO (nord du Togo), programme EN COURS 2022-2026 en 7 vagues — état d'avancement à la date d'extraction, PAS un bilan 2013-2022. Garder ces colonnes, ignorer les ~75 autres
+    observations: 241
+    colonnes:
+      type:                       {type: str, desc: "nature du projet (bâtiments primaire, blocs latrines, clôtures…)"}
+      current_status_of_the_site: {type: str, desc: "Réception provisoire | Réception définitive | Achevé…"}
+      progress_percent:           {type: float, desc: "avancement 0-100"}
+      estimated_cost:             {type: float, desc: "montant FCFA"}
+      total_contract_amount_paid: {type: float, desc: "montant payé FCFA"}
+      number_of_classrooms:       {type: float, desc: "salles de classe créées"}
+      number_of_latrine_blocks:   {type: float, desc: "blocs latrines créés"}
+      population:                 {type: float, desc: "bénéficiaires"}
+      latitude:                   {type: float, desc: "renseignée pour ~86 projets sur 241 seulement (idem longitude)"}
+      longitude:                  {type: float, desc: "voir latitude"}
+      hierarchy:                  {type: str, desc: "'VILLAGE > CANTON > COMMUNE > PREFECTURE > REGION' en MAJUSCULES SANS ACCENTS → normaliser avant croisement avec '01'"}
+
+  "07":
+    df: dfs['07']
+    description: Indicateurs SDG4 UNESCO — 1re ligne = tags HXL → df.iloc[1:] puis pd.to_numeric
+    observations: 6101
+    colonnes:
+      indicator_id: {type: str, desc: "code UNESCO (ex. XGDP.FSGOV.FFNTR)"}
+      year:         {type: str, desc: "année stockée en TEXTE"}
+      value:        {type: str, desc: "valeur stockée en TEXTE"}
+
+  "16":
+    df: dfs['16']
+    description: Indicateurs Banque Mondiale — 1re ligne = tags HXL → df.iloc[1:] puis pd.to_numeric
+    observations: 17224
+    colonnes:
+      Indicator Name: {type: str, desc: "recherche : df['Indicator Name'].str.contains('mot-clé', case=False)"}
+      Indicator Code: {type: str, desc: "code BM (ex. BAR.NOED.1519.FE.ZS)"}
+      Year:           {type: str, desc: "année en TEXTE"}
+      Value:          {type: str, desc: "valeur en TEXTE"}
+
+regles:
+  - Noms de régions incohérents entre fichiers → vérifier .unique() avant de filtrer
+  - Travailler sur .copy(), jamais de mutation en place
+  - Score composite dashboard = transition 25 % + BEPC 25 % + promotion 20 % + scolarisation 15 % + achèvement collège 15 % (renormalisé sur les composantes disponibles)
+  - Entonnoir = 100 élèves au primaire → 63 achèvent le collège → 27 le lycée (source "06")

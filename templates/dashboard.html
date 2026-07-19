@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Togo Éducation - Dashboard de Pilotage</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='images/drapeau-togo.png') }}">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=css_v) }}">
+{# ECharts auto-hébergé : le CDN pyecharts (assets.pyecharts.org) a un
+   certificat SSL expiré et bloquait le chargement chez certains visiteurs #}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+</head>
+<body>
+
+{# ---- Contrôles communs d'une card : télécharger, agrandir, insight ----
+     export : True = graphique/tableau · 'carte' = capture PNG de l'iframe carte · False = pas d'export #}
+{% macro controls(insight, export=True) -%}
+  {% if export == 'carte' %}
+    <button class="dl-btn" onclick="dlCarte(this)" title="{{ t.tt_dl_carte }}"><i class="fas fa-download"></i></button>
+  {% elif export %}
+    <button class="dl-btn" onclick="dlCard(this)" title="{{ t.tt_dl }}"><i class="fas fa-download"></i></button>
+  {% endif %}
+  <button class="expand-btn" {% if not export %}style="right:12px"{% endif %} onclick="toggleExpand(this)" title="{{ t.tt_grandir }}"><i class="fas fa-expand"></i></button>
+  <button class="insight-btn" onclick="toggleInsight(this)" title="{{ t.tt_lecture }}">i</button>
+  <div class="insight-tip"><i class="fas fa-lightbulb"></i> {{ insight }}</div>
+{%- endmacro %}
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+  <div class="header-left">
+    <button class="toggle-btn" id="sidebarToggle" onclick="toggleSidebar()" title="{{ t.tt_menu }}">
+      <i class="fas fa-bars"></i>
+    </button>
+    <a class="brand" href="{{ url_for('accueil') }}" title="Retour à l'accueil">
+      <img class="flag" src="{{ url_for('static', filename='images/drapeau-togo.png') }}" alt="Drapeau du Togo">
+      <span class="titre">Togo Éducation <span>| Pilotage</span></span>
+    </a>
+  </div>
+  <div class="header-right">
+    <a class="h-home" href="{{ url_for('accueil', lang=(lang if lang != 'fr' else None)) }}"><i class="fas fa-home"></i> {{ t.accueil }}</a>
+    <button class="h-icon" id="themeToggle" onclick="toggleTheme()" title="{{ t.tt_theme }}"><i class="fas fa-moon"></i></button>
+    <div class="h-lang" title="Français / English">
+      <button class="lang-btn {% if lang == 'fr' %}active{% endif %}" onclick="setLang('fr')"><b>FR</b></button>
+      <span class="lang-sep">|</span>
+      <button class="lang-btn {% if lang == 'en' %}active{% endif %}" onclick="setLang('en')"><b>EN</b></button>
+    </div>
+    <div class="h-stat"><strong>2013-2022</strong>{{ t.donnees_src }}</div>
+    <img class="armoiries" src="{{ url_for('static', filename='images/armoiries-togo.png') }}" alt="Armoiries du Togo" style="width:34px;height:34px;object-fit:contain">
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ===== SIDEBAR : FILTRES ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+    <h2><i class="fas fa-sliders-h"></i> {{ t.filtres }}</h2>
+    <div class="sub">{{ t.filtres_sub }}</div>
+
+    <form method="get" action="{{ url_for('dashboard') }}">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      {% if lang != 'fr' %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+
+      {% if tab == 1 %}
+        <div class="section-label">{{ t.periode }}</div>
+        <div class="filter-group">
+          <label><i class="fas fa-calendar"></i> {{ t.annee_ref }}</label>
+          <select name="annee">
+            {% for a in annees_o1 %}
+              <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+      {% elif tab == 2 %}
+        <div class="section-label">{{ t.territoire }}</div>
+        <input type="hidden" name="vue" value="{{ vue }}">
+        <input type="hidden" name="ind" value="{{ ind }}">
+        <input type="hidden" name="niv" value="{{ niv }}">
+        <div class="filter-group">
+          <label><i class="fas fa-map-pin"></i> {{ t.region }}</label>
+          <select name="region" onchange="this.form.pref.value='Toutes'; this.form.commune.value='Toutes'; this.form.submit()">
+            <option value="Toutes" {% if region == 'Toutes' %}selected{% endif %}>{{ t.toutes_regions }}</option>
+            {% for r in regions_carte %}
+              <option value="{{ r }}" {% if r == region %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label><i class="fas fa-map"></i> {{ t.prefecture }}</label>
+          <select name="pref" onchange="this.form.commune.value='Toutes'; this.form.submit()">
+            <option value="Toutes" {% if pref == 'Toutes' %}selected{% endif %}>{{ t.toutes_prefs }}</option>
+            {% for p in prefectures %}
+              <option value="{{ p }}" {% if p == pref %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label><i class="fas fa-city"></i> {{ t.commune }}</label>
+          <select name="commune" onchange="this.form.submit()" {% if pref == 'Toutes' %}disabled title="{{ t.choisir_pref }}"{% endif %}>
+            <option value="Toutes" {% if commune == 'Toutes' %}selected{% endif %}>{{ t.toutes_communes }}</option>
+            {% for c in communes %}
+              <option value="{{ c }}" {% if c == commune %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+      {% elif tab == 3 %}
+        <div class="section-label">{{ t.periode_pop }}</div>
+        <div class="filter-group">
+          <label><i class="fas fa-calendar"></i> {{ t.annee }}</label>
+          <select name="annee">
+            <option value="" {% if not annee %}selected{% endif %}>{{ t.derniere }}</option>
+            {% for a in annees_o3 %}
+              <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label><i class="fas fa-venus-mars"></i> {{ t.sexe }}</label>
+          <select name="sexe">
+            {% for s in sexes %}
+              <option value="{{ s }}" {% if s == sexe %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <input type="hidden" name="ra" value="{{ ra }}">
+        <input type="hidden" name="rb" value="{{ rb }}">
+
+      {% elif tab == 4 %}
+        <div class="section-label">{{ t.terr_periode }}</div>
+        <div class="filter-group">
+          <label><i class="fas fa-map-pin"></i> {{ t.region_bepc }}</label>
+          <select name="region">
+            {% for r in regions_o4 %}
+              <option value="{{ r }}" {% if r == region %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label><i class="fas fa-calendar"></i> {{ t.annee }}</label>
+          <select name="annee">
+            {% for a in annees_o4 %}
+              <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% elif tab == 5 %}
+        <div class="section-label">{{ t.nav5 }}</div>
+        <div class="sidebar-note">{{ t.reco_side_note }}</div>
+      {% endif %}
+
+      {% if tab != 5 %}<button type="submit" class="btn-appliquer"><i class="fas fa-check"></i> {{ t.appliquer }}</button>{% endif %}
+    </form>
+
+    <div class="sidebar-sources">
+      <div class="section-label">{{ t.sources }}</div>
+      <div class="sidebar-note">
+        INSEED · MEPS · Banque Mondiale · UNESCO · Projets COSO<br>
+        opendata.gouv.tg
+      </div>
+      <a class="btn-pdf" href="{{ url_for('static', filename='pdf/Methodologie_Dashboard_Education_Togo.pdf') }}" download>
+        <i class="fas fa-file-pdf"></i> {{ t.pdf_btn }}
+      </a>
+    </div>
+    </div><!-- /sidebar-inner -->
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="main">
+
+    <!-- Barre d'onglets (toujours visible) -->
+    <nav class="tabs">
+      <a class="tab-btn {% if tab == 1 %}active{% endif %}" href="{{ url_for('dashboard', tab=1) }}"><i class="fas fa-chart-pie"></i> {{ t.nav1 }}</a>
+      <a class="tab-btn {% if tab == 2 %}active{% endif %}" href="{{ url_for('dashboard', tab=2) }}"><i class="fas fa-map-marked-alt"></i> {{ t.nav2 }}</a>
+      <a class="tab-btn {% if tab == 3 %}active{% endif %}" href="{{ url_for('dashboard', tab=3) }}"><i class="fas fa-balance-scale"></i> {{ t.nav3 }}</a>
+      <a class="tab-btn {% if tab == 4 %}active{% endif %}" href="{{ url_for('dashboard', tab=4) }}"><i class="fas fa-venus-mars"></i> {{ t.nav4 }}</a>
+      <a class="tab-btn {% if tab == 5 %}active{% endif %}" href="{{ url_for('dashboard', tab=5) }}"><i class="fas fa-lightbulb"></i> {{ t.nav5 }}</a>
+    </nav>
+
+    <div class="main-content">
+
+    {% if tab == 1 %}
+      <!-- ================= ONGLET 1 : EN CHIFFRES ================= -->
+      <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc1 }} - {{ annee }}</div>
+
+      <div class="kpi-grid">
+        {{ kpi_html | safe }}
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-filter"></i> {{ t.c_entonnoir }} <span class="h3-filtre" id="funTitre">({{ annee }})</span></h3>
+          <div class="card-tabs">
+            <div class="seg seg-mode">
+              <button type="button" class="active" data-vue="fun-sankey" data-paren="({{ annee }})" onclick="switchFunnel(this)"><i class="fas fa-filter"></i> {{ t.seg_entonnoir }}</button>
+              <button type="button" data-vue="fun-bars" data-paren="(2013-2022)" onclick="switchFunnel(this)"><i class="fas fa-chart-bar"></i> {{ t.seg_evo_flux }}</button>
+            </div>
+          </div>
+          <div class="fun-view" id="fun-sankey">{{ funnel | safe }}</div>
+          <div class="fun-view" id="fun-bars" hidden>{{ funnel_evolution | safe }}</div>
+          {{ controls(t.i_entonnoir) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-area"></i> {{ t.c_budget }} <span class="h3-filtre">(2013-2022)</span></h3>
+          <div class="card-tabs">
+            <div class="seg seg-mode">
+              <button type="button" class="active" data-vue="bud-lien" onclick="switchBudget(this)"><i class="fas fa-braille"></i> {{ t.seg_bud_lien }}</button>
+              <button type="button" data-vue="bud-evo" onclick="switchBudget(this)"><i class="fas fa-chart-line"></i> {{ t.seg_bud_evo }}</button>
+            </div>
+          </div>
+          <div class="bud-view" id="bud-lien">{{ scatter | safe }}</div>
+          <div class="bud-view" id="bud-evo" hidden>{{ scatter_evolution | safe }}</div>
+          {{ controls(t.i_budget) }}
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-line"></i> {{ t.c_evolution }} <span id="evoTitre">{{ t.evo_niveau }}</span></h3>
+          <div class="card-tabs">
+            <div class="seg seg-mode" id="segEvoMode">
+              <button type="button" class="active" data-vue="ev-niveau" data-titre="{{ t.evo_niveau }}" onclick="switchEvoMode(this)"><i class="fas fa-layer-group"></i> {{ t.seg_niveau }}</button>
+              <button type="button" data-vue="ev-secteur" data-titre="{{ t.evo_secteur }}" onclick="switchEvoMode(this)"><i class="fas fa-building"></i> {{ t.seg_secteur }}</button>
+            </div>
+          </div>
+          <div class="evo-view" id="ev-niveau">{{ evolution_niveau | safe }}</div>
+          <div class="evo-view" id="ev-secteur" hidden>{{ evolution_secteur | safe }}</div>
+          {{ controls(t.i_evolution) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-table"></i> {{ t.c_tableau }} <span class="h3-filtre">{{ t.tbl_paren }}</span></h3>
+          <div class="card-tabs">
+            <div class="seg-group">
+              <span class="seg-label">{{ t.vue }}</span>
+              <div class="seg" id="segScope">
+                <button type="button" class="active" data-vue="tv-nat" onclick="switchScope(this)"><i class="fas fa-flag"></i> {{ t.national }}</button>
+                <button type="button" data-vue="tv-reg" onclick="switchScope(this)"><i class="fas fa-map-pin"></i> {{ t.par_region }}</button>
+                <button type="button" data-vue="tv-corr" onclick="switchScope(this)"><i class="fas fa-project-diagram"></i> {{ t.correlations }}</button>
+              </div>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <div class="tbl-view" id="tv-nat">{{ table_total | safe }}</div>
+            <div class="tbl-view" id="tv-reg" hidden>{{ table_regional | safe }}</div>
+            <div class="tbl-view" id="tv-corr" hidden>{{ table_correlation | safe }}</div>
+          </div>
+          {{ controls(t.i_tableau) }}
+        </div>
+      </div>
+
+    {% elif tab == 2 %}
+      <!-- ================= ONGLET 2 : CARTE ================= -->
+      <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc2 }} - {{ territoire_label }}</div>
+
+      <div class="map-layout">
+        <div class="chart-card map-card">
+          <h3><i class="fas fa-map-marked-alt"></i>
+            {% if vue == 'points' %}{{ t.c_carte_pts }}
+            {% else %}{{ t.c_carte_thema }} {{ ind_labels[ind] }} {{ t.par }} {{ niv_labels[niv].lower() }}{% endif %}
+            <span class="h3-filtre">({{ territoire_label }})</span>
+          </h3>
+          <div class="card-tabs">
+            <div class="seg seg-mode">
+              <a class="{% if vue == 'points' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='points') }}"><i class="fas fa-map-marker-alt"></i> {{ t.carte_points }}</a>
+              <a class="{% if vue == 'thema' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='thema', ind=ind, niv=niv) }}"><i class="fas fa-fill-drip"></i> {{ t.carte_thema }}</a>
+            </div>
+            {% if vue == 'thema' %}
+            <form method="get" action="{{ url_for('dashboard') }}" class="thema-form">
+              <input type="hidden" name="tab" value="2">
+              <input type="hidden" name="region" value="{{ region }}">
+              <input type="hidden" name="pref" value="{{ pref }}">
+              <input type="hidden" name="commune" value="{{ commune }}">
+              <input type="hidden" name="vue" value="thema">
+              {% if lang != 'fr' %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+              <select name="ind" class="mini-select" onchange="this.form.submit()">
+                {% for k, lbl in ind_labels.items() %}
+                <option value="{{ k }}" {% if k == ind %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+              <select name="niv" class="mini-select" onchange="this.form.submit()">
+                {% for k, lbl in niv_labels.items() %}
+                <option value="{{ k }}" {% if k == niv %}selected{% endif %}>Par {{ lbl.lower() }}</option>
+                {% endfor %}
+              </select>
+            </form>
+            {% endif %}
+          </div>
+          {% if vue == 'points' %}
+          <iframe class="map-frame" src="{{ url_for('carte', region=region, pref=pref, commune=commune) }}" loading="lazy" title="Carte interactive du Togo"></iframe>
+          {{ controls(t.i_carte_pts, export='carte') }}
+          {% else %}
+          <iframe class="map-frame" src="{{ url_for('carte_thematique', region=region, pref=pref, commune=commune, ind=ind, niv=niv) }}" loading="lazy" title="Carte thématique du Togo"></iframe>
+          {{ controls(t.i_carte_thema, export='carte') }}
+          {% endif %}
+        </div>
+        <div class="side-counters">
+          <div class="counter-card"><i class="fas fa-school"></i><div><div class="num">{{ '{:,}'.format(counters.total_ecoles).replace(',', ' ') }}</div><div class="lbl">{{ t.etablissements }}</div></div></div>
+          <div class="counter-card"><i class="fas fa-toilet"></i><div><div class="num">{{ '{:,}'.format(counters.total_toilettes).replace(',', ' ') }}</div><div class="lbl">{{ t.toilettes_lbl }} {{ counters.ratio_toilettes }})</div></div></div>
+          <div class="counter-card"><i class="fas fa-hard-hat"></i><div><div class="num">{{ counters.total_coso }} <small>/ 241</small></div><div class="lbl">{{ t.coso_geo }}</div></div></div>
+          <div class="counter-card"><i class="fas fa-chalkboard"></i><div><div class="num">{{ counters.total_salles }}</div><div class="lbl">{{ t.salles }}</div></div></div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-bar"></i> {{ t.c_types_coso }} <span class="h3-filtre">({{ territoire_label }}, {{ t.geo_paren }})</span></h3>
+          <div id="cosoBarWrap">{{ coso_bar | safe }}</div>
+          {{ controls(t.i_types_coso) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-circle-notch"></i> {{ t.c_statut }} <span class="h3-filtre">({{ territoire_label }})</span><span class="h3-filtre" id="pieFiltreType"></span></h3>
+          {% if coso_croise %}
+          <div class="card-tabs">
+            <div class="seg-group">
+              <span class="seg-label">{{ t.type_projet }}</span>
+              <select id="pieTypeSelect" class="mini-select">
+                <option value="">{{ t.tous_types }}</option>
+                {% for ty in coso_croise | sort %}
+                <option value="{{ ty }}">{{ ty }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          {% endif %}
+          <div id="cosoPieWrap">{{ coso_pie | safe }}</div>
+          {{ controls(t.i_statut) }}
+        </div>
+      </div>
+
+    {% elif tab == 3 %}
+      <!-- ================= ONGLET 3 : COMPARATEUR ================= -->
+      <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc3 }}{% if annee %} - {{ annee }}{% endif %}{% if sexe != 'Total' %} · {{ sexe }}{% endif %}</div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-th"></i> {{ t.c_matrice }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }} · {{ sexe }})</span></h3>
+          <div class="hscroll">{{ heatmap | safe }}</div>
+          {{ controls(t.i_matrice) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-bullseye"></i> {{ t.c_comparateur }} <span class="h3-filtre">({{ t.toutes_label if ra == 'Toutes' or rb == 'Toutes' else ra ~ ' vs ' ~ rb }} · {{ annee if annee else t.derniere_courte }} · {{ sexe }})</span></h3>
+          <form method="get" action="{{ url_for('dashboard') }}" class="thema-form" style="margin-bottom:10px;width:100%;display:flex;gap:10px">
+            <input type="hidden" name="tab" value="3">
+            {% if annee %}<input type="hidden" name="annee" value="{{ annee }}">{% endif %}
+            <input type="hidden" name="sexe" value="{{ sexe }}">
+            {% if lang != 'fr' %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+            <select name="ra" class="mini-select" style="flex:1" onchange="this.form.submit()">
+              <option value="Toutes" {% if ra == 'Toutes' %}selected{% endif %}>{{ t.tout_comparer }}</option>
+              {% for r in regions_o3 %}<option value="{{ r }}" {% if r == ra %}selected{% endif %}>{{ r }}</option>{% endfor %}
+            </select>
+            <select name="rb" class="mini-select" style="flex:1" onchange="this.form.submit()" {% if ra == 'Toutes' %}disabled{% endif %}>
+              <option value="Toutes" {% if rb == 'Toutes' %}selected{% endif %}>{{ t.tout_comparer }}</option>
+              {% for r in regions_o3 %}<option value="{{ r }}" {% if r == rb %}selected{% endif %}>{{ r }}</option>{% endfor %}
+            </select>
+          </form>
+          {{ radar | safe }}
+          {{ controls(t.i_comparateur) }}
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-line"></i> {{ t.c_transition }} <span class="h3-filtre">(2014-2022 · {{ sexe }})</span></h3>
+          {{ evol_transition | safe }}
+          {{ controls(t.i_transition) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-medal"></i> {{ t.c_classement }} <span class="h3-filtre">({{ t.graphique_lbl }} : {{ annee if annee else t.derniere_courte }} · {{ t.tableau_lbl }} : 2014-2022 · {{ sexe }})</span></h3>
+          <div class="card-tabs">
+            <div class="seg seg-mode">
+              <button type="button" class="active" data-vue="rank-graph" onclick="switchRank(this)"><i class="fas fa-chart-bar"></i> {{ t.graphique }}</button>
+              <button type="button" data-vue="rank-table" onclick="switchRank(this)"><i class="fas fa-table"></i> {{ t.tableau_ar }}</button>
+            </div>
+          </div>
+          <div class="rank-view" id="rank-graph">{{ ranking_bar | safe }}</div>
+          <div class="rank-view" id="rank-table" hidden>
+            <div class="table-scroll" style="max-height:380px">{{ ranking_matrice | safe }}</div>
+          </div>
+          {{ controls(t.i_classement) }}
+        </div>
+      </div>
+
+    {% elif tab == 4 %}
+      <!-- ================= ONGLET 4 : FILLES VS GARÇONS ================= -->
+      <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc4 }} ({{ annee }})</div>
+
+      <div class="kpi4-grid">
+        <div class="kpi4-card filles">
+          <div class="lbl"><i class="fas fa-female"></i> {{ t.k_filles }}</div>
+          <div class="val">{{ kpis.filles if kpis.filles is not none else 'N/D' }}%</div>
+          {% if kpis.evol_filles is not none %}<div class="evo"><i class="fas fa-arrow-up"></i> {{ '%+.1f'|format(kpis.evol_filles) }} {{ t.pts_depuis }}</div>{% endif %}
+          <div class="ref">{{ t.etait }} {{ kpis.filles_2011 }}% {{ t.en_2011 }}</div>
+        </div>
+        <div class="kpi4-card garcons">
+          <div class="lbl"><i class="fas fa-male"></i> {{ t.k_garcons }}</div>
+          <div class="val">{{ kpis.garcons if kpis.garcons is not none else 'N/D' }}%</div>
+          {% if kpis.evol_garcons is not none %}<div class="evo"><i class="fas fa-arrow-up"></i> {{ '%+.1f'|format(kpis.evol_garcons) }} {{ t.pts_depuis }}</div>{% endif %}
+          <div class="ref">{{ t.etait }} {{ kpis.garcons_2011 }}% {{ t.en_2011 }}</div>
+        </div>
+        <div class="kpi4-card ecart">
+          <div class="lbl"><i class="fas fa-venus-mars"></i> {{ t.k_ecart }}</div>
+          <div class="val">{{ kpis.ecart if kpis.ecart is not none else 'N/D' }} pts</div>
+          {% if kpis.evol_ecart is not none %}<div class="evo"><i class="fas fa-arrow-down"></i> {{ t.reduit_de }} {{ '%.1f'|format(kpis.evol_ecart) }} {{ t.pts_depuis }}</div>{% endif %}
+          <div class="ref">{{ t.etait }} {{ kpis.ecart_2011 }} {{ t.defaveur }}</div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-line"></i> {{ t.c_bepc }} <span class="h3-filtre">({{ region }}, 2011-2022)</span></h3>
+          {{ bepc_lines | safe }}
+          {{ controls(t.i_bepc) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-bar"></i> {{ t.c_ecart }} <span class="h3-filtre">({{ annee }})</span></h3>
+          {{ ecart_bars | safe }}
+          {{ controls(t.i_ecart) }}
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-pie"></i> {{ t.c_presco }} <span class="h3-filtre">(2021-2022)</span></h3>
+          <div class="card-tabs">
+            <div class="seg seg-mode">
+              <button type="button" class="active" data-vue="presco-donut" onclick="switchPresco(this)"><i class="fas fa-chart-pie"></i> {{ t.national }}</button>
+              <button type="button" data-vue="presco-table" onclick="switchPresco(this)"><i class="fas fa-table"></i> {{ t.par_region_sexe }}</button>
+            </div>
+          </div>
+          <div class="presco-view" id="presco-donut">
+            {{ presco_pie | safe }}
+            <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--gris-texte)">
+              <strong>{{ '{:,}'.format(presco.total).replace(',', ' ') }}</strong> {{ t.enseignants }} ·
+              <span style="color:#e91e63;font-weight:600">{{ presco.pct_femmes }}% {{ t.femmes }} ({{ '{:,}'.format(presco.femmes).replace(',', ' ') }})</span> ·
+              <span style="color:#1976d2;font-weight:600">{{ (100 - presco.pct_femmes) | round(1) }}% {{ t.hommes }} ({{ presco.hommes }})</span>
+            </div>
+          </div>
+          <div class="presco-view" id="presco-table" hidden>
+            <div class="table-scroll" style="max-height:360px">{{ presco_table | safe }}</div>
+          </div>
+          {{ controls(t.i_presco) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-bar"></i> {{ t.c_top_insp }} <span class="h3-filtre">(2021-2022, {{ t.hors_agregats }})</span></h3>
+          {{ top_insp | safe }}
+          {{ controls(t.i_top_insp) }}
+        </div>
+      </div>
+    {% elif tab == 5 %}
+      <!-- ================= ONGLET 5 : RECOMMANDATIONS ================= -->
+      <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc5 }}</div>
+
+      <div class="reco-grid">
+        {% for r in recos %}
+        <div class="reco-card p{{ r.prio }}">
+          <div class="reco-head">
+            <span class="reco-icone"><i class="fas {{ r.icone }}"></i></span>
+            <div class="reco-titres">
+              <span class="reco-prio">{{ t['prio' ~ r.prio] }}</span>
+              <h3>{{ r.titre }}</h3>
+            </div>
+          </div>
+          <div class="reco-bloc">
+            <span class="reco-lbl">{{ t.reco_constat }}</span>
+            <p>{{ r.constat }}</p>
+          </div>
+          <div class="reco-bloc">
+            <span class="reco-lbl">{{ t.reco_actions }}</span>
+            <ul>{% for a in r.actions %}<li>{{ a }}</li>{% endfor %}</ul>
+          </div>
+          <div class="reco-suivi"><i class="fas fa-bullseye"></i><span><span class="reco-lbl">{{ t.reco_suivi }}</span>{{ r.suivi }}</span></div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    </div><!-- /main-content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- Fond assombri pour le mode agrandi -->
+<div id="expandBackdrop" class="expand-backdrop" onclick="collapseExpanded()"></div>
+
+<!-- Fond assombri du tiroir mobile -->
+<div id="drawerBackdrop" class="drawer-backdrop" onclick="fermerSidebar()"></div>
+
+<!-- Voile de chargement (navigation / application des filtres) -->
+<div id="chargement" class="chargement" aria-hidden="true">
+  <div class="spin"></div>
+  <div class="txt">{{ t.chargement }}</div>
+</div>
+
+<!-- ===== CHATBOT ===== -->
+<button class="chat-toggle" id="chatToggle" onclick="toggleChat()" title="{{ t.chat_nom }}">
+  <i class="fas fa-comment-dots"></i>
+  <i class="fas fa-times"></i>
+</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <div class="chat-avatar"><i class="fas fa-robot"></i></div>
+    <div class="chat-info">
+      <div class="chat-name">{{ t.chat_nom }}</div>
+      <div class="chat-status"><i class="fas fa-circle"></i> {{ t.chat_statut }}</div>
+    </div>
+    <button class="chat-close" id="chatTaille" onclick="toggleChatTaille()" title="{{ t.tt_grandir }}"><i class="fas fa-expand"></i></button>
+    <button class="chat-close" onclick="toggleChat()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="chat-msg" id="chatMessages">
+    <div class="msg bot"><span class="msg-icon"><i class="fas fa-graduation-cap"></i></span> {{ t.chat_bienvenue }}</div>
+    <div class="msg quick-replies" id="quickReplies">
+      <button class="qr-btn" data-q="{{ t.chat_tq1 }}" onclick="chatAsk(this.dataset.q)">{{ t.chat_q1 }}</button>
+      <button class="qr-btn" data-q="{{ t.chat_tq2 }}" onclick="chatAsk(this.dataset.q)">{{ t.chat_q2 }}</button>
+      <button class="qr-btn" data-q="{{ t.chat_tq3 }}" onclick="chatAsk(this.dataset.q)">{{ t.chat_q3 }}</button>
+      <button class="qr-btn" data-q="{{ t.chat_tq4 }}" onclick="chatAsk(this.dataset.q)">{{ t.chat_q4 }}</button>
+      <button class="qr-btn" data-q="{{ t.chat_tq5 }}" onclick="chatAsk(this.dataset.q)">{{ t.chat_q5 }}</button>
+    </div>
+  </div>
+  <div class="chat-foot">
+    <input type="text" id="chatInput" placeholder="{{ t.chat_placeholder }}" onkeypress="if(event.key==='Enter') sendChat()">
+    <button onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<script>
+/* ===== Contrôles des cards : insight, agrandir, télécharger ===== */
+function toggleInsight(btn){
+  btn.classList.toggle('active');
+  const tip = btn.parentElement.querySelector('.insight-tip');
+  if (tip) tip.classList.toggle('show');
+}
+
+function resizeCharts(){
+  document.querySelectorAll('div[_echarts_instance_]').forEach(d => {
+    const inst = echarts.getInstanceByDom(d);
+    if (inst) inst.resize();
+  });
+}
+
+function toggleExpand(btn){
+  const card = btn.closest('.chart-card');
+  const expanded = card.classList.toggle('expanded');
+  document.getElementById('expandBackdrop').classList.toggle('show', expanded);
+  btn.querySelector('i').className = expanded ? 'fas fa-compress' : 'fas fa-expand';
+  btn.title = expanded ? 'Réduire' : 'Agrandir';
+  setTimeout(resizeCharts, 180);
+}
+function collapseExpanded(){
+  const card = document.querySelector('.chart-card.expanded');
+  if (card) toggleExpand(card.querySelector('.expand-btn'));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') collapseExpanded(); });
+window.addEventListener('resize', () => resizeCharts());
+window.addEventListener('orientationchange', () => setTimeout(resizeCharts, 300));
+
+/* Recalage garanti : dès que la largeur de la zone de contenu change
+   (chargement initial, tiroir mobile, repli de la sidebar, rotation),
+   tous les graphiques ECharts sont redimensionnés — plus jamais de tracé coupé. */
+(function(){
+  let minuterie = null;
+  const recaler = () => { clearTimeout(minuterie); minuterie = setTimeout(resizeCharts, 120); };
+  const zone = document.querySelector('.main-content');
+  if (zone && 'ResizeObserver' in window) {
+    new ResizeObserver(recaler).observe(zone);
+  }
+  /* Filets de sécurité au premier affichage */
+  document.addEventListener('DOMContentLoaded', recaler);
+  window.addEventListener('load', recaler);
+  setTimeout(resizeCharts, 400);
+})();
+
+/* ===== Voile de chargement : affiché à chaque navigation interne ===== */
+function montrerChargement(){
+  const c = document.getElementById('chargement');
+  if (c) c.classList.add('show');
+}
+/* Soumission d'un formulaire (filtres sidebar, sélecteurs de cards) */
+document.addEventListener('submit', () => montrerChargement(), true);
+/* Clic sur un lien interne (onglets, vues de carte, accueil) :
+   la langue active est propagée sur l'URL avant la navigation */
+const LANG = '{{ lang }}';
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (!href || href.startsWith('#') || a.target === '_blank' || a.hasAttribute('download')) return;
+  if (href.startsWith('http') && !href.includes(location.host)) return;
+  if (LANG !== 'fr') {
+    try {
+      const u = new URL(a.href, location.origin);
+      if (!u.searchParams.has('lang')) {
+        u.searchParams.set('lang', LANG);
+        a.href = u.pathname + u.search + u.hash;
+      }
+    } catch (_) { /* URL non analysable : navigation inchangée */ }
+  }
+  montrerChargement();
+});
+/* Masquer le voile si la page revient du cache (bouton Précédent) */
+window.addEventListener('pageshow', () => {
+  const c = document.getElementById('chargement');
+  if (c) c.classList.remove('show');
+});
+
+/* ===== Sidebar : repli bureau / tiroir mobile (choix bureau mémorisé) ===== */
+const _mobile = window.matchMedia('(max-width: 1024px)');
+function toggleSidebar(){
+  if (_mobile.matches) {
+    // Mobile : tiroir coulissant par-dessus le contenu
+    const ouvert = document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('drawerBackdrop').classList.toggle('show', ouvert);
+  } else {
+    const replie = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('tg-sidebar', replie ? 'replie' : 'ouvert');
+    setTimeout(resizeCharts, 320);
+  }
+}
+function fermerSidebar(){
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('drawerBackdrop').classList.remove('show');
+}
+if (localStorage.getItem('tg-sidebar') === 'replie') document.body.classList.add('sidebar-collapsed');
+/* En repassant en bureau, refermer le tiroir mobile */
+_mobile.addEventListener('change', () => { if (!_mobile.matches) fermerSidebar(); });
+
+/* ===== Segments génériques : activer un bouton, afficher la vue ciblée ===== */
+function _activer(btn){
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* Tableau des indicateurs : National / Par région */
+function switchScope(btn){
+  _activer(btn);
+  document.querySelectorAll('.tbl-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
+}
+
+/* Classement onglet 3 : commutateur Graphique / Tableau */
+function switchRank(btn){
+  _activer(btn);
+  document.querySelectorAll('.rank-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
+  setTimeout(resizeCharts, 60);
+}
+
+/* Préscolaire onglet 4 : commutateur Donut national / Tableau par région et sexe */
+function switchPresco(btn){
+  _activer(btn);
+  document.querySelectorAll('.presco-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
+  setTimeout(resizeCharts, 60);
+}
+
+/* Entonnoir onglet 1 : commutateur Sankey de l'année / Barres 2013-2022 */
+function switchFunnel(btn){
+  _activer(btn);
+  document.querySelectorAll('.fun-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
+  const paren = document.getElementById('funTitre');
+  if (paren) paren.textContent = btn.dataset.paren;
+  setTimeout(resizeCharts, 60);
+}
+
+/* Budget vs Résultats : commutateur Lien (scatter) / Évolution chronologique */
+function switchBudget(btn){
+  _activer(btn);
+  document.querySelectorAll('.bud-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
+  setTimeout(resizeCharts, 60);
+}
+
+/* Évolution : commutateur Niveau / Secteur (une vue pré-rendue par mode) */
+function switchEvoMode(btn){
+  _activer(btn);
+  document.querySelectorAll('.evo-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
+  const titre = document.getElementById('evoTitre');
+  if (titre) titre.textContent = btn.dataset.titre;
+  setTimeout(resizeCharts, 60);
+}
+
+{% if tab == 2 %}
+/* ===== Filtrage croisé COSO : clic sur une barre des types
+       → le camembert des statuts se restreint à ce type ===== */
+const COSO_CROISE = {{ coso_croise | tojson }};
+(function(){
+  function instanceDans(sel){
+    const d = document.querySelector(sel + ' div[_echarts_instance_]');
+    return d ? echarts.getInstanceByDom(d) : null;
+  }
+  function initCroise(essais){
+    const bar = instanceDans('#cosoBarWrap');
+    const pie = instanceDans('#cosoPieWrap');
+    if (!bar || !pie) {
+      if (essais > 0) setTimeout(() => initCroise(essais - 1), 300);
+      return;
+    }
+    const optionGlobale = pie.getOption();      /* photo de la vue « tous types » */
+    const libelle = document.getElementById('pieFiltreType');
+    const selectType = document.getElementById('pieTypeSelect');
+    let typeEpingle = null;                     /* filtre fixé par un clic ou le select */
+
+    function filtrer(type, epingle){
+      const donnees = Object.entries(COSO_CROISE[type]).map(([n, v]) => ({name: n, value: v}));
+      pie.setOption({
+        legend: {data: donnees.map(d => d.name)},
+        series: [{data: donnees}]
+      });
+      if (libelle) libelle.textContent = ' · ' + type + (epingle ? ' 📌' : '');
+    }
+    function vueGlobale(){
+      pie.setOption(optionGlobale, true);
+      if (libelle) libelle.textContent = '';
+    }
+    /* Épingle (ou libère) le filtre sur un type, en gardant le select à jour */
+    function epingler(type){
+      typeEpingle = (type && COSO_CROISE[type]) ? type : null;
+      if (selectType) selectType.value = typeEpingle || '';
+      if (typeEpingle) filtrer(typeEpingle, true); else vueGlobale();
+    }
+    /* Select « Type de projet » : « Tous les types » par défaut (vue globale),
+       un type choisi épingle le camembert sur ce type */
+    if (selectType) {
+      selectType.addEventListener('change', () => epingler(selectType.value || null));
+    }
+
+    /* Survol d'une barre : aperçu du camembert filtré sur ce type */
+    bar.on('mouseover', p => {
+      bar.getZr().setCursorStyle('pointer');
+      if (!typeEpingle && p.name && COSO_CROISE[p.name]) filtrer(p.name, false);
+    });
+    /* Sortie du graphique : retour au global (sauf si un type est épinglé) */
+    bar.on('globalout', () => { if (!typeEpingle) vueGlobale(); });
+
+    /* Clic : épingle le filtre (il résiste au survol) ; re-clic : libère */
+    bar.on('click', p => {
+      if (typeEpingle === p.name || !COSO_CROISE[p.name]) {
+        epingler(null);
+      } else {
+        epingler(p.name);
+      }
+    });
+  }
+  window.addEventListener('load', () => initCroise(10));
+})();
+{% endif %}
+
+/* ===== Bascule de langue : recharge la page dans la langue choisie ===== */
+function setLang(code){
+  if (code === LANG) return;
+  const u = new URL(location.href);
+  if (code === 'fr') u.searchParams.delete('lang');
+  else u.searchParams.set('lang', code);
+  montrerChargement();
+  location.href = u.pathname + u.search + u.hash;
+}
+
+/* Re-thématise les graphiques ECharts déjà rendus (axes, légendes, labels) */
+function themeCharts(dark){
+  const txt = dark ? '#A9B6C4' : '#4A5568';
+  const split = dark ? 'rgba(255,255,255,0.10)' : '#E5EAF0';
+  document.querySelectorAll('div[_echarts_instance_]').forEach(d => {
+    const inst = echarts.getInstanceByDom(d);
+    if (!inst) return;
+    const opt = inst.getOption();
+    ['xAxis', 'yAxis'].forEach(k => (opt[k] || []).forEach(a => {
+      a.axisLabel = Object.assign({}, a.axisLabel, {color: txt});
+      a.nameTextStyle = Object.assign({}, a.nameTextStyle, {color: txt});
+      if (a.splitLine && a.splitLine.show !== false) {
+        a.splitLine = Object.assign({}, a.splitLine,
+          {lineStyle: Object.assign({}, (a.splitLine || {}).lineStyle, {color: split})});
+      }
+    }));
+    (opt.legend || []).forEach(l => { l.textStyle = Object.assign({}, l.textStyle, {color: txt}); });
+    (opt.visualMap || []).forEach(v => { v.textStyle = Object.assign({}, v.textStyle, {color: txt}); });
+    (opt.radar || []).forEach(r => { r.axisName = Object.assign({}, r.axisName, {color: txt}); });
+    (opt.series || []).forEach(s => {
+      if (s.type === 'sankey' || s.type === 'pie') {
+        s.label = Object.assign({}, s.label, {color: dark ? '#DDE6EF' : '#1A202C'});
+      }
+      if (s.markPoint) {
+        s.markPoint.label = Object.assign({}, s.markPoint.label, {color: txt});
+      }
+    });
+    inst.setOption(opt);
+  });
+}
+
+function applyTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+  themeCharts(dark);
+  localStorage.setItem('tg-theme', dark ? 'dark' : 'light');
+}
+function toggleTheme(){ applyTheme(!document.body.classList.contains('dark')); }
+window.addEventListener('load', () => {
+  if (localStorage.getItem('tg-theme') === 'dark') applyTheme(true);
+});
+
+/* ===== Chatbot ===== */
+function toggleChat(){
+  document.getElementById('chatToggle').classList.toggle('open');
+  document.getElementById('chatPanel').classList.toggle('open');
+}
+/* Agrandir / réduire le panneau de l'assistant */
+function toggleChatTaille(){
+  const grand = document.getElementById('chatPanel').classList.toggle('grand');
+  document.querySelector('#chatTaille i').className = grand ? 'fas fa-compress' : 'fas fa-expand';
+  const m = document.getElementById('chatMessages');
+  if (m) m.scrollTop = m.scrollHeight;
+  setTimeout(resizeCharts, 300);   /* les graphiques du chat suivent la nouvelle largeur */
+}
+/* Identifiant de session : chaque navigateur garde SA mémoire d'agent côté serveur */
+const CHAT_SESSION = (() => {
+  let s = localStorage.getItem('tg-chat-session');
+  if (!s) { s = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('tg-chat-session', s); }
+  return s;
+})();
+
+function sendChat(){
+  const i = document.getElementById('chatInput'), m = i.value.trim();
+  if (!m) return;
+  appendMsg('user', m); i.value = '';
+  demanderAgent(m);
+}
+function chatAsk(m){ appendMsg('user', m); demanderAgent(m); }
+
+/* ===== Propositions de l'IA : renouvelées après chaque question =====
+   Pool bilingue servi par le serveur ; à chaque réponse, 3 nouvelles
+   suggestions non encore montrées sont proposées (recyclage quand épuisé). */
+const CHAT_SUGG = [
+{% for i in range(1, 11) %}  {l: {{ t['chat_q' ~ i] | tojson }}, q: {{ t['chat_tq' ~ i] | tojson }}}{{ ',' if not loop.last }}
+{% endfor %}];
+let suggMontrees = new Set();
+/* Les 5 puces initiales (rendues côté serveur) comptent comme déjà montrées */
+document.querySelectorAll('#quickReplies .qr-btn').forEach(b => suggMontrees.add(b.dataset.q));
+function majSuggestions(posee){
+  const zone = document.getElementById('quickReplies');
+  if (!zone) return;
+  if (posee) suggMontrees.add(posee);
+  let dispo = CHAT_SUGG.filter(s => !suggMontrees.has(s.q));
+  if (dispo.length < 3) {                       /* pool épuisé : on repart de zéro */
+    suggMontrees = new Set(posee ? [posee] : []);
+    dispo = CHAT_SUGG.filter(s => !suggMontrees.has(s.q));
+  }
+  const choix = dispo.sort(() => Math.random() - 0.5).slice(0, 3);
+  choix.forEach(s => suggMontrees.add(s.q));
+  zone.innerHTML = '';
+  choix.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'qr-btn';
+    b.textContent = s.l;
+    b.onclick = () => chatAsk(s.q);
+    zone.appendChild(b);
+  });
+}
+
+/* Indicateur « l'assistant écrit… » */
+function montrerFrappe(){
+  const c = document.getElementById('chatMessages'), d = document.createElement('div');
+  d.className = 'msg bot frappe'; d.id = 'chatFrappe';
+  d.innerHTML = '<span class="msg-icon"><i class="fas fa-graduation-cap"></i></span> <span class="pts"><i></i><i></i><i></i></span>';
+  c.insertBefore(d, c.lastElementChild); c.scrollTop = c.scrollHeight;
+}
+function enleverFrappe(){ const d = document.getElementById('chatFrappe'); if (d) d.remove(); }
+
+/* Interroge l'agent IA (package agent_ia côté serveur) ; en cas d'échec,
+   bascule sur les réponses locales pré-écrites pour rester démontrable hors ligne */
+function demanderAgent(question){
+  montrerFrappe();
+  fetch('{{ url_for("api_chat") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: question, session: CHAT_SESSION})
+  })
+    .then(r => r.json())
+    .then(d => {
+      enleverFrappe();
+      if (d && d.html) appendBotHTML(d.html);
+      else chatBotReply(question);
+      majSuggestions(question);
+    })
+    .catch(() => { enleverFrappe(); chatBotReply(question); majSuggestions(question); });
+}
+
+/* Insère une réponse HTML (markdown converti + éventuels graphiques ECharts).
+   Les <script> injectés par innerHTML sont inertes : on les ré-exécute pour
+   que le graphique s'initialise — on ne voit que le rendu. */
+function appendBotHTML(html){
+  const c = document.getElementById('chatMessages'), d = document.createElement('div');
+  d.className = 'msg bot';
+  d.innerHTML = '<span class="msg-icon"><i class="fas fa-graduation-cap"></i></span><div class="msg-corps">' + html + '</div>';
+  c.insertBefore(d, c.lastElementChild);
+  d.querySelectorAll('script').forEach(s => {
+    const n = document.createElement('script');
+    n.textContent = s.textContent;
+    s.parentNode.replaceChild(n, s);
+  });
+  c.scrollTop = c.scrollHeight;
+}
+function appendMsg(t, text){
+  const c = document.getElementById('chatMessages'), d = document.createElement('div');
+  d.className = 'msg ' + t;
+  if (t === 'bot') d.innerHTML = '<span class="msg-icon"><i class="fas fa-graduation-cap"></i></span> ' + text;
+  else d.textContent = text;
+  c.insertBefore(d, c.lastElementChild);
+  c.scrollTop = c.scrollHeight;
+}
+function chatBotReply(m){
+  const l = m.toLowerCase();
+  {% if lang == 'en' %}
+  const resp = {
+    'high school': "The high school completion rate is <b>27.2%</b> in 2022. It is the weakest link in the system: only 27 out of 100 pupils entering primary school complete high school.",
+    'lycée': "The high school completion rate is <b>27.2%</b> in 2022. It is the weakest link in the system: only 27 out of 100 pupils entering primary school complete high school.",
+    'priority': "The <b>Savanes</b> region is the highest priority (composite score 65.7/100, last in the ranking). It combines a low transition rate (66.9%) and a very low BEPC rate (48.9%). See the Regional disparities tab.",
+    'budget': "The share of the budget allocated to education fell from <b>19.4%</b> (2021) to <b>14.7%</b> (2022), a drop of 4.7 points. In absolute terms, spending reached 195.5 billion FCFA in 2022.",
+    'coso': "The COSO project funds <b>241 micro-projects</b> in northern Togo: 89 primary school buildings, 81 latrine blocks, 27 fences… 86 projects are geolocated on the map (Infrastructure mapping tab).",
+    'girl': "The girl-boy gap at the BEPC is <b>5.9 points</b> in 2022 (61.1% girls vs 67.0% boys). It is narrowing slowly (10.6 pts in 2011) but remains marked, especially in Savanes. See the Girl-boy parity tab.",
+    'gap': "The girl-boy gap at the BEPC is <b>5.9 points</b> in 2022 (61.1% girls vs 67.0% boys). It is narrowing slowly (10.6 pts in 2011) but remains marked.",
+    'teacher': "Preschool has <b>7,802 teachers</b> (national total, T.Général row), 91.8% of whom are women (7,164). See the donut in the Girl-boy parity tab.",
+    'map': "The <b>Infrastructure mapping</b> tab shows the 15,454 schools and 10,228 toilets in clusters, plus the 86 geolocated COSO projects. Filter by region in the sidebar."
+  };
+  let r = "I can tell you about:<br>• Completion rates<br>• Priority regions<br>• The education budget<br>• COSO projects<br>• Girl-boy parity<br>• The interactive map<br><br>What would you like to know?";
+  {% else %}
+  const resp = {
+    'lycée': "Le taux d'achèvement au lycée est de <b>27,2%</b> en 2022. C'est le maillon faible du système : seulement 27 élèves sur 100 arrivant en primaire achèvent le lycée.",
+    'prioritaire': "La région <b>Savanes</b> est la plus prioritaire (score composite 65,7/100, dernière du classement). Elle cumule faible transition (66,9%) et BEPC très bas (48,9%). Voir l'onglet Disparités régionales.",
+    'budget': "La part du budget alloué à l'éducation est passée de <b>19,4%</b> (2021) à <b>14,7%</b> (2022), soit -4,7 points. En valeur absolue, les dépenses atteignent 195,5 milliards FCFA en 2022.",
+    'coso': "Le projet COSO finance <b>241 microprojets</b> dans les zones nord du Togo : 89 bâtiments primaires, 81 blocs latrines, 27 clôtures… 86 projets sont géolocalisés sur la carte (onglet Cartographie des infrastructures).",
+    'filles': "L'écart filles-garçons au BEPC est de <b>5,9 points</b> en 2022 (61,1% filles vs 67,0% garçons). Il se réduit lentement (10,6 pts en 2011) mais reste marqué, surtout aux Savanes. Voir l'onglet Parité filles-garçons.",
+    'écart': "L'écart filles-garçons au BEPC est de <b>5,9 points</b> en 2022 (61,1% filles vs 67,0% garçons). Il se réduit lentement (10,6 pts en 2011) mais reste marqué.",
+    'enseignant': "Le préscolaire compte <b>7 802 enseignants</b> (total national T.Général), dont 91,8% de femmes (7 164). Voir le donut de l'onglet Parité filles-garçons.",
+    'carte': "L'onglet <b>Cartographie des infrastructures</b> affiche les 15 454 écoles et 10 228 toilettes en clusters, plus les 86 projets COSO géolocalisés. Filtrez par région dans la barre latérale."
+  };
+  let r = "Je peux vous renseigner sur :<br>• Les taux d'achèvement<br>• Les régions prioritaires<br>• Le budget éducation<br>• Les projets COSO<br>• La parité filles-garçons<br>• La carte interactive<br><br>Que souhaitez-vous savoir ?";
+  {% endif %}
+  for (const [k, v] of Object.entries(resp)) { if (l.includes(k)) { r = v; break; } }
+  appendMsg('bot', r);
+}
+
+/* Export PNG de la carte : délègue à la fonction injectée dans l'iframe (même origine) */
+function dlCarte(btn){
+  const iframe = btn.closest('.chart-card').querySelector('iframe.map-frame');
+  if (!iframe) return;
+  const win = iframe.contentWindow;
+  if (win && typeof win.telechargerCartePng === 'function') {
+    const ic = btn.querySelector('i');
+    ic.className = 'fas fa-spinner fa-spin';
+    win.telechargerCartePng().finally(() => { ic.className = 'fas fa-download'; });
+  } else {
+    alert("La carte n'a pas fini de charger - réessayez dans un instant.");
+  }
+}
+
+/* Export : PNG si la card contient un graphique ECharts, CSV si elle contient un tableau */
+function dlCard(btn){
+  const card = btn.closest('.chart-card');
+  // Ne considérer que les éléments actuellement visibles (cards à vues multiples)
+  const chartDiv = [...card.querySelectorAll('div[_echarts_instance_]')].find(d => d.offsetParent !== null);
+  if (chartDiv) {
+    const inst = echarts.getInstanceByDom(chartDiv);
+    if (inst) {
+      const a = document.createElement('a');
+      a.href = inst.getDataURL({type: 'png', pixelRatio: 2, backgroundColor: '#fff'});
+      a.download = 'graphique.png';
+      a.click();
+      return;
+    }
+  }
+  const table = [...card.querySelectorAll('table')].find(t => t.offsetParent !== null) || card.querySelector('table');
+  if (table) {
+    const rows = [...table.querySelectorAll('tr')].map(tr =>
+      [...tr.querySelectorAll('th,td')].map(c => '"' + c.textContent.trim().replace(/"/g, '""') + '"').join(';')
+    );
+    const blob = new Blob(['﻿' + rows.join('\n')], {type: 'text/csv;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tableau.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+</script>
+</body>
+</html>

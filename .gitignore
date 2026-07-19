@@ -1,0 +1,51 @@
+# Secrets — ne JAMAIS versionner
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Environnement virtuel
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Docker
+.docker/
+
+# Exports volumineux des notebooks
+exports_onglet1/
+exports_onglet2/
+exports_onglet3/
+exports_onglet4/
+
+# Divers
+*.tmp
+*.log
+*.bak
