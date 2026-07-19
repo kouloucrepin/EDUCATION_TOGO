@@ -8,6 +8,7 @@ FICHIERS = {
     'batiments': '03-batiments-electrification.csv',
     'bibliotheques': '04-bibliotheques.csv',
     'coso': '14-projet-coso-education.csv',
+    'prescolaire': '13-enseignants-prescolaire-inspection.csv',
 }
 
 COULEURS_CATEGORIE = {

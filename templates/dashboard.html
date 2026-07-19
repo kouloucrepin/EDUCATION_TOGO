@@ -112,7 +112,6 @@
         <div class="filter-group">
           <label><i class="fas fa-calendar"></i> {{ t.annee }}</label>
           <select name="annee">
-            <option value="" {% if not annee %}selected{% endif %}>{{ t.derniere }}</option>
             {% for a in annees_o3 %}
               <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
             {% endfor %}
@@ -126,24 +125,11 @@
             {% endfor %}
           </select>
         </div>
-        <input type="hidden" name="ra" value="{{ ra }}">
-        <input type="hidden" name="rb" value="{{ rb }}">
-
-      {% elif tab == 4 %}
-        <div class="section-label">{{ t.terr_periode }}</div>
         <div class="filter-group">
           <label><i class="fas fa-map-pin"></i> {{ t.region_bepc }}</label>
-          <select name="region">
+          <select name="region_bepc">
             {% for r in regions_o4 %}
-              <option value="{{ r }}" {% if r == region %}selected{% endif %}>{{ r }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="filter-group">
-          <label><i class="fas fa-calendar"></i> {{ t.annee }}</label>
-          <select name="annee">
-            {% for a in annees_o4 %}
-              <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+              <option value="{{ r }}" {% if r == region_bepc %}selected{% endif %}>{{ r }}</option>
             {% endfor %}
           </select>
         </div>
@@ -176,7 +162,6 @@
       <a class="tab-btn {% if tab == 1 %}active{% endif %}" href="{{ url_for('dashboard', tab=1) }}"><i class="fas fa-chart-pie"></i> {{ t.nav1 }}</a>
       <a class="tab-btn {% if tab == 2 %}active{% endif %}" href="{{ url_for('dashboard', tab=2) }}"><i class="fas fa-map-marked-alt"></i> {{ t.nav2 }}</a>
       <a class="tab-btn {% if tab == 3 %}active{% endif %}" href="{{ url_for('dashboard', tab=3) }}"><i class="fas fa-balance-scale"></i> {{ t.nav3 }}</a>
-      <a class="tab-btn {% if tab == 4 %}active{% endif %}" href="{{ url_for('dashboard', tab=4) }}"><i class="fas fa-venus-mars"></i> {{ t.nav4 }}</a>
       <a class="tab-btn {% if tab == 5 %}active{% endif %}" href="{{ url_for('dashboard', tab=5) }}"><i class="fas fa-lightbulb"></i> {{ t.nav5 }}</a>
     </nav>
 
@@ -264,8 +249,8 @@
           </h3>
           <div class="card-tabs">
             <div class="seg seg-mode">
-              <a class="{% if vue == 'points' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='points') }}"><i class="fas fa-map-marker-alt"></i> {{ t.carte_points }}</a>
               <a class="{% if vue == 'thema' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='thema', ind=ind, niv=niv) }}"><i class="fas fa-fill-drip"></i> {{ t.carte_thema }}</a>
+              <a class="{% if vue == 'points' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='points') }}"><i class="fas fa-map-marker-alt"></i> {{ t.carte_points }}</a>
             </div>
             {% if vue == 'thema' %}
             <form method="get" action="{{ url_for('dashboard') }}" class="thema-form">
@@ -288,19 +273,56 @@
             </form>
             {% endif %}
           </div>
-          {% if vue == 'points' %}
-          <iframe class="map-frame" src="{{ url_for('carte', region=region, pref=pref, commune=commune) }}" loading="lazy" title="Carte interactive du Togo"></iframe>
-          {{ controls(t.i_carte_pts, export='carte') }}
-          {% else %}
+          {% if vue == 'thema' %}
           <iframe class="map-frame" src="{{ url_for('carte_thematique', region=region, pref=pref, commune=commune, ind=ind, niv=niv) }}" loading="lazy" title="Carte thématique du Togo"></iframe>
           {{ controls(t.i_carte_thema, export='carte') }}
+          {% else %}
+          <iframe class="map-frame" src="{{ url_for('carte', region=region, pref=pref, commune=commune) }}" loading="lazy" title="Carte interactive du Togo"></iframe>
+          {{ controls(t.i_carte_pts, export='carte') }}
           {% endif %}
         </div>
         <div class="side-counters">
-          <div class="counter-card"><i class="fas fa-school"></i><div><div class="num">{{ '{:,}'.format(counters.total_ecoles).replace(',', ' ') }}</div><div class="lbl">{{ t.etablissements }}</div></div></div>
-          <div class="counter-card"><i class="fas fa-toilet"></i><div><div class="num">{{ '{:,}'.format(counters.total_toilettes).replace(',', ' ') }}</div><div class="lbl">{{ t.toilettes_lbl }} {{ counters.ratio_toilettes }})</div></div></div>
-          <div class="counter-card"><i class="fas fa-hard-hat"></i><div><div class="num">{{ counters.total_coso }} <small>/ 241</small></div><div class="lbl">{{ t.coso_geo }}</div></div></div>
-          <div class="counter-card"><i class="fas fa-chalkboard"></i><div><div class="num">{{ counters.total_salles }}</div><div class="lbl">{{ t.salles }}</div></div></div>
+          <div class="vb vb-school">
+            <div class="vb-icon"><i class="fas fa-school"></i></div>
+            <div class="vb-body">
+              <div class="vb-num">{{ '{:,}'.format(counters.total_ecoles).replace(',', ' ') }}</div>
+              <div class="vb-lbl">{{ t.etablissements }}</div>
+              <div class="vb-subs">
+                <span><i class="fas fa-child"></i> {{ t.primaire_lbl }} {{ '{:,}'.format(counters.primaire).replace(',', ' ') }}</span>
+                <span><i class="fas fa-users"></i> {{ t.college_lbl }} {{ '{:,}'.format(counters.college).replace(',', ' ') }}</span>
+                <span><i class="fas fa-graduation-cap"></i> {{ t.lycee_lbl }} {{ '{:,}'.format(counters.lycee).replace(',', ' ') }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="vb vb-infra">
+            <div class="vb-icon"><i class="fas fa-building"></i></div>
+            <div class="vb-body">
+              <div class="vb-subs vb-subs-infra">
+                <span><i class="fas fa-toilet"></i> {{ t.toilettes_lbl }} {{ '{:,}'.format(counters.toilettes_etab).replace(',', ' ') }} <span class="vb-badge">{{ counters.toilettes_pct }}%</span></span>
+                <span><i class="fas fa-futbol"></i> {{ t.terrain_sport }} {{ '{:,}'.format(counters.terrain_sport).replace(',', ' ') }} <span class="vb-badge">{{ counters.terrain_sport_pct }}%</span></span>
+                <span><i class="fas fa-book"></i> {{ t.biblio_lbl }} {{ '{:,}'.format(counters.bibliotheques).replace(',', ' ') }}</span>
+                <span><i class="fas fa-bolt"></i> {{ t.electrifies_lbl }} {{ '{:,}'.format(counters.batiments).replace(',', ' ') }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="vb vb-coso">
+            <div class="vb-icon"><i class="fas fa-hard-hat"></i></div>
+            <div class="vb-body">
+              <div class="vb-num">{{ '{:,}'.format(counters.total_coso).replace(',', ' ') }}</div>
+              <div class="vb-lbl">{{ t.coso_geo }}</div>
+            </div>
+          </div>
+          <div class="vb vb-teacher">
+            <div class="vb-icon"><i class="fas fa-person-chalkboard"></i></div>
+            <div class="vb-body">
+              <div class="vb-num">{{ '{:,}'.format(counters.enseignants_total).replace(',', ' ') }}</div>
+              <div class="vb-lbl">{{ t.enseignants_lbl }}</div>
+              <div class="vb-subs">
+                <span><i class="fas fa-person-dress"></i> {{ t.femmes_lbl }} {{ '{:,}'.format(counters.enseignants_femmes).replace(',', ' ') }}</span>
+                <span><i class="fas fa-person"></i> {{ t.hommes_lbl }} {{ '{:,}'.format(counters.enseignants_hommes).replace(',', ' ') }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -331,63 +353,10 @@
       </div>
 
     {% elif tab == 3 %}
-      <!-- ================= ONGLET 3 : COMPARATEUR ================= -->
+      <!-- ================= ONGLET 3 : PERFORMANCES & PARITÉ ================= -->
       <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc3 }}{% if annee %} - {{ annee }}{% endif %}{% if sexe != 'Total' %} · {{ sexe }}{% endif %}</div>
 
-      <div class="chart-row">
-        <div class="chart-card">
-          <h3><i class="fas fa-th"></i> {{ t.c_matrice }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }} · {{ sexe }})</span></h3>
-          <div class="hscroll">{{ heatmap | safe }}</div>
-          {{ controls(t.i_matrice) }}
-        </div>
-        <div class="chart-card">
-          <h3><i class="fas fa-bullseye"></i> {{ t.c_comparateur }} <span class="h3-filtre">({{ t.toutes_label if ra == 'Toutes' or rb == 'Toutes' else ra ~ ' vs ' ~ rb }} · {{ annee if annee else t.derniere_courte }} · {{ sexe }})</span></h3>
-          <form method="get" action="{{ url_for('dashboard') }}" class="thema-form" style="margin-bottom:10px;width:100%;display:flex;gap:10px">
-            <input type="hidden" name="tab" value="3">
-            {% if annee %}<input type="hidden" name="annee" value="{{ annee }}">{% endif %}
-            <input type="hidden" name="sexe" value="{{ sexe }}">
-            {% if lang != 'fr' %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
-            <select name="ra" class="mini-select" style="flex:1" onchange="this.form.submit()">
-              <option value="Toutes" {% if ra == 'Toutes' %}selected{% endif %}>{{ t.tout_comparer }}</option>
-              {% for r in regions_o3 %}<option value="{{ r }}" {% if r == ra %}selected{% endif %}>{{ r }}</option>{% endfor %}
-            </select>
-            <select name="rb" class="mini-select" style="flex:1" onchange="this.form.submit()" {% if ra == 'Toutes' %}disabled{% endif %}>
-              <option value="Toutes" {% if rb == 'Toutes' %}selected{% endif %}>{{ t.tout_comparer }}</option>
-              {% for r in regions_o3 %}<option value="{{ r }}" {% if r == rb %}selected{% endif %}>{{ r }}</option>{% endfor %}
-            </select>
-          </form>
-          {{ radar | safe }}
-          {{ controls(t.i_comparateur) }}
-        </div>
-      </div>
-
-      <div class="chart-row">
-        <div class="chart-card">
-          <h3><i class="fas fa-chart-line"></i> {{ t.c_transition }} <span class="h3-filtre">(2014-2022 · {{ sexe }})</span></h3>
-          {{ evol_transition | safe }}
-          {{ controls(t.i_transition) }}
-        </div>
-        <div class="chart-card">
-          <h3><i class="fas fa-medal"></i> {{ t.c_classement }} <span class="h3-filtre">({{ t.graphique_lbl }} : {{ annee if annee else t.derniere_courte }} · {{ t.tableau_lbl }} : 2014-2022 · {{ sexe }})</span></h3>
-          <div class="card-tabs">
-            <div class="seg seg-mode">
-              <button type="button" class="active" data-vue="rank-graph" onclick="switchRank(this)"><i class="fas fa-chart-bar"></i> {{ t.graphique }}</button>
-              <button type="button" data-vue="rank-table" onclick="switchRank(this)"><i class="fas fa-table"></i> {{ t.tableau_ar }}</button>
-            </div>
-          </div>
-          <div class="rank-view" id="rank-graph">{{ ranking_bar | safe }}</div>
-          <div class="rank-view" id="rank-table" hidden>
-            <div class="table-scroll" style="max-height:380px">{{ ranking_matrice | safe }}</div>
-          </div>
-          {{ controls(t.i_classement) }}
-        </div>
-      </div>
-
-    {% elif tab == 4 %}
-      <!-- ================= ONGLET 4 : FILLES VS GARÇONS ================= -->
-      <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc4 }} ({{ annee }})</div>
-
-      <div class="kpi4-grid">
+      <div class="kpi4-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="kpi4-card filles">
           <div class="lbl"><i class="fas fa-female"></i> {{ t.k_filles }}</div>
           <div class="val">{{ kpis.filles if kpis.filles is not none else 'N/D' }}%</div>
@@ -400,55 +369,40 @@
           {% if kpis.evol_garcons is not none %}<div class="evo"><i class="fas fa-arrow-up"></i> {{ '%+.1f'|format(kpis.evol_garcons) }} {{ t.pts_depuis }}</div>{% endif %}
           <div class="ref">{{ t.etait }} {{ kpis.garcons_2011 }}% {{ t.en_2011 }}</div>
         </div>
-        <div class="kpi4-card ecart">
-          <div class="lbl"><i class="fas fa-venus-mars"></i> {{ t.k_ecart }}</div>
-          <div class="val">{{ kpis.ecart if kpis.ecart is not none else 'N/D' }} pts</div>
-          {% if kpis.evol_ecart is not none %}<div class="evo"><i class="fas fa-arrow-down"></i> {{ t.reduit_de }} {{ '%.1f'|format(kpis.evol_ecart) }} {{ t.pts_depuis }}</div>{% endif %}
-          <div class="ref">{{ t.etait }} {{ kpis.ecart_2011 }} {{ t.defaveur }}</div>
+        <div class="kpi4-card">
+          <div class="lbl"><i class="fas fa-calculator"></i> Moyenne BEPC</div>
+          <div class="val" style="color:#006A4E">{{ kpis.moyenne if kpis.moyenne is not none else 'N/D' }}%</div>
+          <div class="ref">(filles + garçons) / 2</div>
         </div>
       </div>
 
       <div class="chart-row">
         <div class="chart-card">
-          <h3><i class="fas fa-chart-line"></i> {{ t.c_bepc }} <span class="h3-filtre">({{ region }}, 2011-2022)</span></h3>
+          <h3><i class="fas fa-th"></i> {{ t.c_matrice }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }} · {{ sexe }})</span></h3>
+          <div class="hscroll">{{ heatmap | safe }}</div>
+          {{ controls(t.i_matrice) }}
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-line"></i> {{ t.c_transition }} <span class="h3-filtre">(2014-2022 · {{ sexe }})</span></h3>
+          {{ evol_transition | safe }}
+          {{ controls(t.i_transition) }}
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3><i class="fas fa-chart-line"></i> {{ t.c_bepc }} <span class="h3-filtre">({{ region_bepc }}, 2011-2022)</span></h3>
           {{ bepc_lines | safe }}
           {{ controls(t.i_bepc) }}
         </div>
         <div class="chart-card">
-          <h3><i class="fas fa-chart-bar"></i> {{ t.c_ecart }} <span class="h3-filtre">({{ annee }})</span></h3>
+          <h3><i class="fas fa-chart-bar"></i> {{ t.c_ecart }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }})</span></h3>
           {{ ecart_bars | safe }}
           {{ controls(t.i_ecart) }}
         </div>
       </div>
 
-      <div class="chart-row">
-        <div class="chart-card">
-          <h3><i class="fas fa-chart-pie"></i> {{ t.c_presco }} <span class="h3-filtre">(2021-2022)</span></h3>
-          <div class="card-tabs">
-            <div class="seg seg-mode">
-              <button type="button" class="active" data-vue="presco-donut" onclick="switchPresco(this)"><i class="fas fa-chart-pie"></i> {{ t.national }}</button>
-              <button type="button" data-vue="presco-table" onclick="switchPresco(this)"><i class="fas fa-table"></i> {{ t.par_region_sexe }}</button>
-            </div>
-          </div>
-          <div class="presco-view" id="presco-donut">
-            {{ presco_pie | safe }}
-            <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--gris-texte)">
-              <strong>{{ '{:,}'.format(presco.total).replace(',', ' ') }}</strong> {{ t.enseignants }} ·
-              <span style="color:#e91e63;font-weight:600">{{ presco.pct_femmes }}% {{ t.femmes }} ({{ '{:,}'.format(presco.femmes).replace(',', ' ') }})</span> ·
-              <span style="color:#1976d2;font-weight:600">{{ (100 - presco.pct_femmes) | round(1) }}% {{ t.hommes }} ({{ presco.hommes }})</span>
-            </div>
-          </div>
-          <div class="presco-view" id="presco-table" hidden>
-            <div class="table-scroll" style="max-height:360px">{{ presco_table | safe }}</div>
-          </div>
-          {{ controls(t.i_presco) }}
-        </div>
-        <div class="chart-card">
-          <h3><i class="fas fa-chart-bar"></i> {{ t.c_top_insp }} <span class="h3-filtre">(2021-2022, {{ t.hors_agregats }})</span></h3>
-          {{ top_insp | safe }}
-          {{ controls(t.i_top_insp) }}
-        </div>
-      </div>
+
     {% elif tab == 5 %}
       <!-- ================= ONGLET 5 : RECOMMANDATIONS ================= -->
       <div class="tab-desc"><i class="fas fa-chevron-right"></i> {{ t.desc5 }}</div>
@@ -641,13 +595,6 @@ function switchScope(btn){
 function switchRank(btn){
   _activer(btn);
   document.querySelectorAll('.rank-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
-  setTimeout(resizeCharts, 60);
-}
-
-/* Préscolaire onglet 4 : commutateur Donut national / Tableau par région et sexe */
-function switchPresco(btn){
-  _activer(btn);
-  document.querySelectorAll('.presco-view').forEach(v => { v.hidden = (v.id !== btn.dataset.vue); });
   setTimeout(resizeCharts, 60);
 }
 

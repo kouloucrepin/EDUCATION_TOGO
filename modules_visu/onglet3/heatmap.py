@@ -6,18 +6,17 @@ from .data import get_heatmap_data, get_national_indicators, get_ranking_data
 
 
 def heatmap_table_html(dfs, annee=None, sexe='Total'):
-    """Matrice Région × Indicateur en tableau HTML à cellules colorées
-    (style du mockup) avec colonne Score composite."""
+    """Matrice Région × Indicateur — tableau avec barres proportionnelles intégrées."""
     regional = get_heatmap_data(dfs, annee=annee, sexe=sexe)
     nat = get_national_indicators(dfs, annee=annee if annee else 2022)
     scores = {r['region']: r['score'] for r in get_ranking_data(dfs, annee=annee, sexe=sexe)}
 
     an_promo = annee if annee else 2019
     colonnes = [
-        ('promotion', f"Promotion primaire ('{str(an_promo)[2:]})"),
-        ('transition', 'Transition P→S'),
-        ('bepc', 'Admission BEPC'),
-        ('scolar', 'Scolarisation collège'),
+        ('promotion', f"Promotion primaire", f"'{str(an_promo)[2:]}"),
+        ('transition', 'Transition P→S', 'primaire → secondaire'),
+        ('bepc', 'Admission BEPC', 'taux de réussite'),
+        ('scolar', 'Scolarisation collège', 'valeur nationale'),
     ]
 
     lignes = []
@@ -35,43 +34,51 @@ def heatmap_table_html(dfs, annee=None, sexe='Total'):
         vals = [l[cle] for l in lignes if l[cle] is not None]
         return max(vals) if vals else None
 
-    meilleurs = {cle: _meilleur(cle) for cle, _ in colonnes}
+    meilleurs = {cle: _meilleur(cle) for cle, _, _ in colonnes}
 
-    def _classe(v, meilleur=None):
+    def _bar(v, meilleur=None):
         if v is None:
-            return 'cell-nd'
-        if meilleur is not None and v == meilleur:
-            return 'cell-best'
-        if v >= 75:
-            return 'cell-green'
-        if v >= 60:
-            return 'cell-yellow'
-        return 'cell-red'
+            return '<div class="hm-bar hm-bar-nd">N/D</div>'
+        pct = min(v, 100)
+        color = '#22C55E' if v >= 75 else '#EAB308' if v >= 60 else '#EF4444'
+        best = ' hm-best' if meilleur is not None and v == meilleur else ''
+        star = '<span class="hm-star">★</span> ' if meilleur is not None and v == meilleur else ''
+        return (
+            f'<div class="hm-bar{best}">'
+            f'<span class="hm-fill" style="width:{pct}%;background:{color}"></span>'
+            f'<span class="hm-val">{star}{v:.1f}%</span>'
+            f'</div>'
+        )
 
-    def _classe_score(v):
+    def _score_bar(v):
         if v is None:
-            return 'cell-nd'
-        if v >= 76:
-            return 'cell-green'
-        if v >= 70:
-            return 'cell-yellow'
-        return 'cell-red'
+            return '<div class="hm-bar hm-bar-nd">N/D</div>'
+        pct = min(v, 100)
+        color = '#22C55E' if v >= 76 else '#EAB308' if v >= 70 else '#EF4444'
+        return (
+            f'<div class="hm-bar hm-score">'
+            f'<span class="hm-fill" style="width:{pct}%;background:{color}"></span>'
+            f'<span class="hm-val"><strong>{v:.1f}</strong></span>'
+            f'</div>'
+        )
 
-    html = ['<table class="heatmap-table"><thead><tr><th>Région</th>']
-    for _, libelle in colonnes:
-        html.append(f'<th>{libelle}</th>')
-    html.append('<th>Score</th></tr></thead><tbody>')
+    html = ['<table class="hm-table"><thead><tr>']
+    html.append('<th class="hm-th-reg">Région</th>')
+    for _, titre, sous in colonnes:
+        html.append(f'<th class="hm-th"><span class="hm-titre">{titre}</span><span class="hm-soustitre">{sous}</span></th>')
+    html.append('<th class="hm-th hm-th-score"><span class="hm-titre">Score</span><span class="hm-soustitre">composite</span></th>')
+    html.append('</tr></thead><tbody>')
 
     for l in lignes:
         score = l['score']
-        alerte = ' class="region-alerte"' if (score is not None and score < 70) else ''
-        html.append(f'<tr><td{alerte}>{l["region"]}</td>')
-        for cle, _ in colonnes:
+        html.append(f'<tr class="hm-row">')
+        alerte = '<span class="hm-alerte">⚠</span> ' if score is not None and score < 70 else ''
+        html.append(f'<td class="hm-reg">{alerte}{l["region"]}</td>')
+        for cle, _, _ in colonnes:
             v = l[cle]
-            txt = f'{v:.1f}%'.replace('.', ',') if v is not None else 'N/D'
-            html.append(f'<td class="{_classe(v, meilleurs[cle])}">{txt}</td>')
-        stxt = f'{score:.1f}'.replace('.', ',') if score is not None else 'N/D'
-        html.append(f'<td class="{_classe_score(score)}"><strong>{stxt}</strong></td></tr>')
+            html.append(f'<td class="hm-cell">{_bar(v, meilleurs[cle])}</td>')
+        html.append(f'<td class="hm-cell hm-cell-score">{_score_bar(score)}</td>')
+        html.append('</tr>')
 
     html.append('</tbody></table>')
     html.append(

@@ -55,30 +55,41 @@ def _couleur_inspection(nom):
     return '#22865F'
 
 
-def top_inspections_bar_html(dfs, top=10):
-    """Top des inspections locales par effectifs préscolaires
+def top_inspections_bar_html(dfs, top=None):
+    """Toutes les inspections locales par effectifs préscolaires
     (agrégats T.Général / T.R.* exclus par get_prescolaire_par_inspection)."""
-    items = get_prescolaire_par_inspection(dfs)[:top]
+    items = get_prescolaire_par_inspection(dfs)
+    if top:
+        items = items[:top]
+    items = list(reversed(items))
     donnees = [{'value': it['total'], 'itemStyle': {'color': _couleur_inspection(it['inspection'])}}
                for it in items]
 
     bar = (
-        Bar(init_opts=opts.InitOpts(width='100%', height='380px', bg_color='transparent'))
+        Bar(init_opts=opts.InitOpts(width='100%', height='500px', bg_color='transparent'))
         .add_xaxis([it['inspection'] for it in items])
         .add_yaxis('Enseignants', donnees, category_gap='40%',
-                   label_opts=opts.LabelOpts(is_show=True, position='top',
-                                             font_size=10, color='#4A5568',
-                                             font_weight='bold'))
+                   label_opts=opts.LabelOpts(is_show=True, position='right',
+                                              font_size=10, color='#4A5568',
+                                              font_weight='bold'))
+        .reversal_axis()
         .set_global_opts(
+            title_opts=opts.TitleOpts(
+                title='Pôles préscolaires',
+                subtitle="Effectifs par inspection locale",
+                pos_left='center',
+                title_textstyle_opts=opts.TextStyleOpts(font_size=14, font_weight='bold', color='#006A4E'),
+                subtitle_textstyle_opts=opts.TextStyleOpts(font_size=11, color='#718096'),
+            ),
             xaxis_opts=opts.AxisOpts(
-                axislabel_opts=opts.LabelOpts(rotate=30, font_size=9, interval=0)),
-            yaxis_opts=opts.AxisOpts(
                 splitline_opts=opts.SplitLineOpts(is_show=True)),
+            yaxis_opts=opts.AxisOpts(
+                axislabel_opts=opts.LabelOpts(font_size=10, interval=0)),
             tooltip_opts=opts.TooltipOpts(trigger='axis'),
             legend_opts=opts.LegendOpts(is_show=False),
         )
     )
-    bar.options['grid'] = {'left': '2%', 'right': '2%', 'top': 16, 'bottom': 6, 'containLabel': True}
+    bar.options['grid'] = {'left': '2%', 'right': '10%', 'top': 50, 'bottom': 6, 'containLabel': True}
     return bar.render_embed()
 
 

@@ -12,6 +12,101 @@ def _norm_txt(s):
     return s.upper().strip()
 
 
+def _norm_insp(s):
+    s = unicodedata.normalize('NFD', str(s))
+    s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+    s = s.upper().replace('-', ' ').replace("'", ' ').replace('IEPP ', '')
+    return ' '.join(s.split())
+
+
+def _build_teacher_inspection_map(presco_inspections, school_inspections):
+    OVERRIDES = {
+        'Agoenyive Est': 'IEPP Ago\u00e9-Nyiv\u00e9-Est',
+        'Agoenyive Ouest': 'IEPP Ago\u00e9-Nyiv\u00e9-Ouest',
+        'Ogou Nord': 'IEPP Ogou',
+        'Ogou Sud': 'IEPP Ogou',
+    }
+    school_norm = {}
+    for s in school_inspections:
+        sn = _norm_insp(s)
+        school_norm.setdefault(sn, []).append(s)
+
+    presco_names = [p for p in presco_inspections if not p.startswith('T.')]
+    mapping = {}
+    for p in presco_names:
+        if p in OVERRIDES:
+            mapping[p] = OVERRIDES[p]
+        else:
+            pn = _norm_insp(p)
+            matches = school_norm.get(pn, [])
+            if len(matches) == 1:
+                mapping[p] = matches[0]
+    return mapping
+
+
+PRESCO_REGION_MAP = {
+    'T.R.Grand Lom\u00e9': 'Maritime',
+    'T.R.Maritime': 'Maritime',
+    'T.R.Plateaux Est': 'Plateaux',
+    'T.R.Plateaux Ouest': 'Plateaux',
+    'T.R.Centrale': 'Centrale',
+    'T.R.Kara': 'Kara',
+    'T.R. Savanes': 'Savanes',
+}
+
+
+def get_teacher_region_agg(dfs):
+    if 'prescolaire' not in dfs:
+        return {}
+    presco = dfs['prescolaire']
+    agg = {}
+    for _, r in presco.iterrows():
+        insp = r['inspections']
+        sexe = str(r['sexe'])
+        val = pd.to_numeric(r['Value'], errors='coerce')
+        if pd.isna(val):
+            continue
+        if insp in PRESCO_REGION_MAP:
+            region = PRESCO_REGION_MAP[insp]
+        elif insp == 'T.G\u00e9n\u00e9ral':
+            continue
+        else:
+            continue
+        d = agg.setdefault(region, {'total': 0, 'F\u00e9minin': 0, 'Masculin': 0})
+        if sexe == 'Total':
+            d['total'] += int(val)
+        elif sexe in d:
+            d[sexe] += int(val)
+    return agg
+
+
+def get_teacher_by_inspection(dfs):
+    if 'prescolaire' not in dfs:
+        return {}
+    presco = dfs['prescolaire']
+    school = dfs['etablissements']
+    map_p2s = _build_teacher_inspection_map(
+        presco['inspections'].dropna().unique(),
+        school['inspection_tutelle'].dropna().unique(),
+    )
+    result = {}
+    for _, r in presco.iterrows():
+        insp = r['inspections']
+        sexe = str(r['sexe'])
+        val = pd.to_numeric(r['Value'], errors='coerce')
+        if pd.isna(val):
+            continue
+        if insp not in map_p2s:
+            continue
+        school_insp = map_p2s[insp]
+        d = result.setdefault(school_insp, {'total': 0, 'F\u00e9minin': 0, 'Masculin': 0})
+        if sexe == 'Total':
+            d['total'] += int(val)
+        elif sexe in d:
+            d[sexe] += int(val)
+    return result
+
+
 def _parse_point(geom_str):
     m = re.search(r'POINT\s*\(([\d\.\-]+)\s+([\d\.\-]+)\)', geom_str)
     if m:
@@ -63,18 +158,27 @@ def get_territoires(dfs):
 
 def get_ecoles_points(dfs, regions=None, prefecture=None, commune=None):
     df = filter_territoire(dfs['etablissements'], regions, prefecture, commune)
+    _teachers = None
+    if 'prescolaire' in dfs:
+        _teachers = get_teacher_by_inspection(dfs)
     points = []
     for _, r in df.iterrows():
         lon, lat = _parse_point(r['geometry'])
         if lon is not None:
+            insp = r.get('inspection_tutelle', '')
+            t = _teachers.get(insp, {}) if _teachers else {}
             points.append({
                 'lat': lat, 'lon': lon,
                 'nom': r.get('etablissement_nom', ''),
                 'region': r.get('region_nom_bdd', ''),
                 'prefecture': r.get('prefecture_nom_bdd', ''),
                 'categorie': r.get('etablissement_categorie', ''),
-                'inspection': r.get('inspection_tutelle', ''),
+                'inspection': insp,
                 'commune': r.get('commune_nom_bdd', ''),
+                'terrain_sport': r.get('terrain_sport', ''),
+                'enseignants_total': t.get('total', None),
+                'enseignants_femmes': t.get('F\u00e9minin', None),
+                'enseignants_hommes': t.get('Masculin', None),
             })
     return points
 
@@ -160,20 +264,60 @@ def get_coso_projets(dfs, regions=None, prefecture=None, commune=None):
 def get_counters(dfs, regions=None, prefecture=None, commune=None):
     ecoles = get_ecoles_points(dfs, regions, prefecture, commune)
     toilettes = get_toilettes_points(dfs, regions, prefecture, commune)
-    coso = get_coso_projets(dfs, regions, prefecture, commune)
 
     total_ecoles = len(ecoles)
-    total_toilettes = len(toilettes)
-    total_coso = len(coso)
-    total_salles = sum(p['salles'] for p in coso)
-    ratio_toilettes = round(total_toilettes / total_ecoles, 2) if total_ecoles else 0
+
+    df = filter_territoire(dfs['etablissements'], regions, prefecture, commune)
+    terrain_sport_oui = len(df[df['terrain_sport'] == 'Oui'])
+    terrain_sport_pct = round(terrain_sport_oui / total_ecoles * 100, 1) if total_ecoles else 0
+
+    toilettes_etab = len(set(p['etab'] for p in toilettes)) if toilettes else 0
+    toilettes_pct = round(toilettes_etab / total_ecoles * 100, 1) if total_ecoles else 0
+
+    coso = get_coso_projets(dfs, regions, prefecture, commune)
+    total_coso = len(coso) if coso else 0
+
+    cat_counts = df['etablissement_categorie'].value_counts()
+    primaire = int(cat_counts.get('Ecole primaire', 0))
+    college = int(cat_counts.get('College', 0))
+    lycee = int(cat_counts.get('Lyc\u00e9e', 0))
+
+    bat_df = filter_territoire(dfs['batiments'], regions, prefecture, commune)
+    batiments = len(bat_df)
+
+    biblio_df = filter_territoire(dfs['bibliotheques'], regions, prefecture, commune)
+    bibliotheques = biblio_df['etablissement_nom'].nunique() if 'etablissement_nom' in biblio_df.columns else 0
+
+    if 'prescolaire' in dfs:
+        presco = dfs['prescolaire']
+        if regions and not prefecture and not commune:
+            teacher_agg = get_teacher_region_agg(dfs)
+            enseignants_total = sum(v['total'] for r, v in teacher_agg.items() if r in regions)
+            enseignants_femmes = sum(v['F\u00e9minin'] for r, v in teacher_agg.items() if r in regions)
+            enseignants_hommes = sum(v['Masculin'] for r, v in teacher_agg.items() if r in regions)
+        else:
+            gen = presco[presco['inspections'] == 'T.G\u00e9n\u00e9ral']
+            enseignants_total = int(pd.to_numeric(gen[gen['sexe'] == 'Total']['Value'], errors='coerce').sum())
+            enseignants_femmes = int(pd.to_numeric(gen[gen['sexe'] == 'F\u00e9minin']['Value'], errors='coerce').sum())
+            enseignants_hommes = int(pd.to_numeric(gen[gen['sexe'] == 'Masculin']['Value'], errors='coerce').sum())
+    else:
+        enseignants_total = enseignants_femmes = enseignants_hommes = 0
 
     return {
         'total_ecoles': total_ecoles,
-        'total_toilettes': total_toilettes,
+        'primaire': primaire,
+        'college': college,
+        'lycee': lycee,
+        'toilettes_etab': toilettes_etab,
+        'toilettes_pct': toilettes_pct,
+        'terrain_sport': terrain_sport_oui,
+        'terrain_sport_pct': terrain_sport_pct,
+        'batiments': batiments,
+        'bibliotheques': bibliotheques,
+        'enseignants_total': enseignants_total,
+        'enseignants_femmes': enseignants_femmes,
+        'enseignants_hommes': enseignants_hommes,
         'total_coso': total_coso,
-        'total_salles': total_salles,
-        'ratio_toilettes': ratio_toilettes,
     }
 
 

@@ -24,9 +24,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; colo
 
 /* COUNTERS */
 .counter-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;
 }
-@media (max-width: 800px) { .counter-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .counter-grid { grid-template-columns: repeat(2, 1fr); } }
 .counter-card {
   background: white; border-radius: 12px; padding: 16px; text-align: center;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
@@ -86,16 +86,12 @@ def generer_dashboard_html(regions=None):
       <div class="label">Établissements</div>
     </div>
     <div class="counter-card">
-      <div class="num">{counters["total_toilettes"]:,}</div>
-      <div class="label">Toilettes</div>
+      <div class="num">{counters["toilettes_etab"]:,}</div>
+      <div class="label">Avec toilettes ({counters["toilettes_pct"]}%)</div>
     </div>
     <div class="counter-card">
-      <div class="num gold">{counters["total_coso"]}</div>
-      <div class="label">Projets COSO</div>
-    </div>
-    <div class="counter-card">
-      <div class="num">{counters["total_salles"]}</div>
-      <div class="label">Salles construites</div>
+      <div class="num">{counters["terrain_sport"]:,}</div>
+      <div class="label">Avec terrain sport ({counters["terrain_sport_pct"]}%)</div>
     </div>
   </div>
 

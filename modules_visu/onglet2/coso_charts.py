@@ -9,37 +9,38 @@ def _clean_label(l):
 
 
 def coso_type_bar_html(type_rows):
+    type_rows = sorted(type_rows, key=lambda x: x[1])  # ascending → after reversal_axis: largest at top
     labels = [t for t, _ in type_rows]
     values = [v for _, v in type_rows]
 
-    def _wrap_label(l, max_chars=16, max_lines=3):
+    def _wrap_label(l, max_chars=24):
         import textwrap
         lines = textwrap.wrap(l, width=max_chars)
-        if len(lines) > max_lines:
-            lines = lines[:max_lines]
+        if len(lines) > 2:
+            lines = lines[:2]
             lines[-1] = lines[-1].rstrip(',; ') + '...'
-        return '\n'.join(lines) if len(lines) > 1 else l
+        return '\n'.join(lines)
 
     bar = (
         Bar(init_opts=opts.InitOpts(width='100%', height='380px',
                                      bg_color='transparent'))
         .add_xaxis([_wrap_label(l) for l in labels])
-        .add_yaxis('Projets', values, category_gap='50%',
+        .add_yaxis('Projets', values, category_gap='40%',
                    itemstyle_opts=opts.ItemStyleOpts(
                        color=JsCode(
                            "function(p){var c=['#22c55e','#92400e','#f59e0b','#3b82f6','#f97316','#ef4444','#8b5cf6'];return c[p.dataIndex%c.length];}"
                        )))
+        .reversal_axis()
         .set_global_opts(
-            # Pas de titre interne : la card du dashboard porte déjà le titre
-            xaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(
-                rotate=0, font_size=10, interval=0,
+            xaxis_opts=opts.AxisOpts(name='Nombre de projets'),
+            yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(
+                font_size=10,
             )),
-            yaxis_opts=opts.AxisOpts(name='Nombre de projets'),
             tooltip_opts=opts.TooltipOpts(trigger='axis'),
             legend_opts=opts.LegendOpts(is_show=False),
         )
     )
-    bar.options['grid'] = {'top': 24, 'left': '3%', 'right': '3%', 'bottom': '3%', 'containLabel': True}
+    bar.options['grid'] = {'top': 16, 'left': '3%', 'right': '8%', 'bottom': '3%', 'containLabel': True}
     return bar.render_embed()
 
 
