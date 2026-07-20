@@ -240,6 +240,11 @@ def get_coso_projets(dfs, regions=None, prefecture=None, commune=None):
     if commune:
         df = df[hier_norm.str.contains(_norm_txt(commune), regex=False)]
 
+    def _hier_seg(h, i):
+        # hierarchy = VILLAGE > CANTON > COMMUNE > PREFECTURE > REGION
+        parts = [p.strip() for p in str(h).split('>')]
+        return parts[i] if len(parts) >= abs(i) else ''
+
     rows = []
     for _, r in df.iterrows():
         def _safe_int(v):
@@ -257,6 +262,8 @@ def get_coso_projets(dfs, regions=None, prefecture=None, commune=None):
             'salles': _safe_int(r.get('number_of_classrooms', 0)),
             'latrines': _safe_int(r.get('number_of_latrine_blocks', 0)),
             'localite': r.get('location_name', ''),
+            'region': _hier_seg(r.get('hierarchy', ''), -1),
+            'prefecture': _hier_seg(r.get('hierarchy', ''), -2),
         })
     return rows
 
@@ -276,6 +283,8 @@ def get_counters(dfs, regions=None, prefecture=None, commune=None):
 
     coso = get_coso_projets(dfs, regions, prefecture, commune)
     total_coso = len(coso) if coso else 0
+    coso_regions = len({p['region'] for p in coso if p.get('region')}) if coso else 0
+    coso_prefectures = len({p['prefecture'] for p in coso if p.get('prefecture')}) if coso else 0
 
     cat_counts = df['etablissement_categorie'].value_counts()
     primaire = int(cat_counts.get('Ecole primaire', 0))
@@ -318,6 +327,8 @@ def get_counters(dfs, regions=None, prefecture=None, commune=None):
         'enseignants_femmes': enseignants_femmes,
         'enseignants_hommes': enseignants_hommes,
         'total_coso': total_coso,
+        'coso_regions': coso_regions,
+        'coso_prefectures': coso_prefectures,
     }
 
 

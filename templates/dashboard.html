@@ -328,6 +328,10 @@
             <div class="vb-body">
               <div class="vb-num">{{ '{:,}'.format(counters.total_coso).replace(',', ' ') }}</div>
               <div class="vb-lbl">{{ t.coso_geo }}</div>
+              <div class="vb-subs">
+                <span><i class="fas fa-map-pin"></i> {{ t.coso_regions_lbl }} {{ counters.coso_regions }}</span>
+                <span><i class="fas fa-map-signs"></i> {{ t.coso_prefectures_lbl }} {{ counters.coso_prefectures }}</span>
+              </div>
             </div>
           </div>
           <div class="vb vb-teacher">
