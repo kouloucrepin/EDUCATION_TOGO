@@ -198,6 +198,35 @@ body.sidebar-collapsed .sidebar { width: 0; padding: 18px 0; }
 .pdf-modal-box iframe { flex: 1; width: 100%; border: none; background: #525659; }
 @media (max-width: 640px) { .pdf-modal { padding: 0; } .pdf-modal-box { width: 100vw; height: 100vh; border-radius: 0; } }
 
+/* ===== Onglet 2 · vue Tableau des indicateurs ===== */
+.tab-indic-filtres {
+  display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 6px 0 12px;
+}
+.tab-indic-filtres label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--gris-fonce, #33414D); }
+.tab-indic-filtres .mini-select { min-width: 190px; }
+.tab-indic-btn {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border: none;
+  border-radius: 8px; background: var(--vert, #006A4E); color: #fff; font-weight: 600;
+  font-size: 13px; cursor: pointer; transition: filter 0.2s;
+}
+.tab-indic-btn:hover { filter: brightness(1.1); }
+.tab-indic-count { font-size: 12px; color: var(--gris, #5B6B78); font-weight: 600; margin-left: auto; }
+.tab-indic-scroll { max-height: 560px; overflow: auto; border: 1px solid #E2E8ED; border-radius: 8px; }
+.tab-indic { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tab-indic thead th {
+  position: sticky; top: 0; z-index: 2; background: var(--vert, #006A4E); color: #fff;
+  padding: 9px 10px; text-align: left; font-weight: 600; white-space: nowrap; cursor: default;
+}
+.tab-indic th.num, .tab-indic td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tab-indic tbody td { padding: 7px 10px; border-bottom: 1px solid #EDF1F4; color: #33414D; white-space: nowrap; }
+.tab-indic tbody tr:hover td { background: #F1F7F5; }
+.tab-indic th.col-actif { background: var(--vert-fonce, #004D3A); }
+.tab-indic td[class*="cell-"] { font-weight: 600; }
+body.dark .tab-indic-scroll { border-color: #223041; }
+body.dark .tab-indic tbody td { color: #C7D2DE; border-bottom-color: #1c2836; }
+body.dark .tab-indic tbody tr:hover td { background: #17222e; }
+body.dark .tab-indic-filtres label { color: #C7D2DE; }
+
 /* ===== MAIN + TABS ===== */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tabs {

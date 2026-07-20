@@ -279,6 +279,7 @@
         <div class="chart-card map-card">
           <h3><i class="fas fa-map-marked-alt"></i>
             {% if vue == 'points' %}{{ t.c_carte_pts }}
+            {% elif vue == 'tableau' %}{{ t.c_tableau }}
             {% else %}{{ t.c_carte_thema }} {{ ind_labels[ind] }} {{ t.par }} {{ niv_labels[niv].lower() }}{% endif %}
             <span class="h3-filtre">({{ territoire_label }})</span>
           </h3>
@@ -286,6 +287,7 @@
             <div class="seg seg-mode">
               <a class="{% if vue == 'thema' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='thema', ind=ind, niv=niv) }}"><i class="fas fa-fill-drip"></i> {{ t.carte_thema }}</a>
               <a class="{% if vue == 'points' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='points') }}"><i class="fas fa-map-marker-alt"></i> {{ t.carte_points }}</a>
+              <a class="{% if vue == 'tableau' %}active{% endif %}" href="{{ url_for('dashboard', tab=2, region=region, pref=pref, commune=commune, vue='tableau') }}"><i class="fas fa-table"></i> {{ t.carte_tableau }}</a>
             </div>
             {% if vue == 'thema' %}
             <form method="get" action="{{ url_for('dashboard') }}" class="thema-form">
@@ -311,6 +313,82 @@
           {% if vue == 'thema' %}
           <iframe class="map-frame" src="{{ url_for('carte_thematique', region=region, pref=pref, commune=commune, ind=ind, niv=niv) }}" loading="lazy" title="Carte thématique du Togo"></iframe>
           {{ controls(t.i_carte_thema, export='carte') }}
+          {% elif vue == 'tableau' %}
+          <div class="tab-indic-filtres">
+            <label>{{ t.tab_variable }}
+              <select id="tabVar" class="mini-select">
+                {% for k, v in tableau_vars.items() %}<option value="{{ k }}">{{ v.label }}</option>{% endfor %}
+              </select>
+            </label>
+            <label>{{ t.tab_priorite }}
+              <select id="tabPrio" class="mini-select">
+                <option value="">{{ t.tab_toutes }}</option>
+                <option value="1">{{ t.q1 }}</option>
+                <option value="2">{{ t.q2 }}</option>
+                <option value="3">{{ t.q3 }}</option>
+                <option value="4">{{ t.q4 }}</option>
+                <option value="5">{{ t.q5 }}</option>
+              </select>
+            </label>
+            <button type="button" class="tab-indic-btn" onclick="appliquerTableau()"><i class="fas fa-check"></i> {{ t.tab_afficher }}</button>
+            <span id="tabCount" class="tab-indic-count"></span>
+          </div>
+          <div class="hscroll tab-indic-scroll">
+            <table id="tabIndic" class="tab-indic">
+              <thead><tr>
+                <th>{{ t.col_region }}</th><th>{{ t.col_prefecture }}</th><th>{{ t.col_commune }}</th><th>{{ t.col_annee }}</th>
+                {% for k, v in tableau_vars.items() %}<th data-col="{{ k }}">{{ v.label }}</th>{% endfor %}
+              </tr></thead>
+              <tbody>
+                {% for r in tableau_rows %}
+                <tr{% for k in tableau_vars %} data-{{ k }}="{{ r[k] }}"{% endfor %}>
+                  <td>{{ r.region }}</td><td>{{ r.prefecture }}</td><td>{{ r.commune }}</td><td class="num">{{ r.annee }}</td>
+                  {% for k, v in tableau_vars.items() %}
+                  <td class="num cell-{{ k }}">{% if v.fmt == 'int' %}{{ '{:,}'.format(r[k]).replace(',', ' ') }}{% elif v.fmt == 'pct' %}{{ ('%.1f'|format(r[k]))|replace('.', ',') }} %{% elif v.fmt == 'f2' %}{{ ('%.2f'|format(r[k]))|replace('.', ',') }}{% else %}{{ ('%.1f'|format(r[k]))|replace('.', ',') }}{% endif %}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {{ controls(t.i_tableau_indic, export=False) }}
+          <script>
+          const TAB_VARS = {{ tableau_vars|tojson }};
+          const TAB_COULEURS = ['#DC2626','#F97316','#FBBF24','#22C55E','#16A34A']; /* Q1 prioritaire -> Q5 performant */
+          function appliquerTableau(){
+            const v = document.getElementById('tabVar').value;
+            const prio = document.getElementById('tabPrio').value;
+            const inverse = !!(TAB_VARS[v] && TAB_VARS[v].inverse);
+            const rows = Array.from(document.querySelectorAll('#tabIndic tbody tr'));
+            const vals = rows.map(r => parseFloat(r.dataset[v])).filter(x => !isNaN(x)).sort((a,b)=>a-b);
+            const n = vals.length;
+            const seuils = [0.2,0.4,0.6,0.8].map(p => vals[Math.max(0, Math.floor(n*p)-1)]);
+            const qIndex = x => { let i=0; while(i<4 && x>seuils[i]) i++; return i; }; /* 0..4 bas->haut */
+            /* colonne active en surbrillance */
+            document.querySelectorAll('#tabIndic th').forEach(th => th.classList.toggle('col-actif', th.dataset.col===v));
+            document.querySelectorAll('#tabIndic td').forEach(td => { td.style.background=''; });
+            let shown = 0;
+            rows.forEach(r => {
+              const x = parseFloat(r.dataset[v]);
+              const i = isNaN(x) ? 2 : qIndex(x);
+              const prioIdx = inverse ? (5 - i) : (i + 1);      /* 1=très prioritaire .. 5=très performant */
+              const colorIdx = inverse ? (4 - i) : i;           /* rouge = prioritaire */
+              const cell = r.querySelector('.cell-' + v);
+              if (cell) cell.style.background = TAB_COULEURS[colorIdx] + '2e';
+              const ok = !prio || String(prioIdx) === prio;
+              r.style.display = ok ? '' : 'none';
+              if (ok) shown++;
+            });
+            const tbody = document.querySelector('#tabIndic tbody');
+            rows.filter(r => r.style.display !== 'none')
+                .sort((a,b) => { const xa=parseFloat(a.dataset[v]), xb=parseFloat(b.dataset[v]);
+                                 return inverse ? (xb - xa) : (xa - xb); })  /* pire en premier */
+                .forEach(r => tbody.appendChild(r));
+            const c = document.getElementById('tabCount');
+            if (c) c.textContent = shown + ' / ' + rows.length + ' communes';
+          }
+          appliquerTableau();
+          </script>
           {% else %}
           <iframe class="map-frame" src="{{ url_for('carte', region=region, pref=pref, commune=commune) }}" loading="lazy" title="Carte interactive du Togo"></iframe>
           {{ controls(t.i_carte_pts, export='carte') }}

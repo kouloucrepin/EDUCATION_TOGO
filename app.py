@@ -122,7 +122,12 @@ TRADUCTIONS = {
         'correlations': 'Corrélations',
         'c_carte_pts': 'Carte des écoles et des projets',
         'c_carte_thema': 'Carte thématique -', 'par': 'par',
-        'carte_points': 'Points', 'carte_thema': 'Thématique',
+        'carte_points': 'Points', 'carte_thema': 'Thématique', 'carte_tableau': 'Tableau',
+        'c_tableau': 'Indicateurs par commune',
+        'tab_variable': 'Variable', 'tab_priorite': 'Niveau de priorité', 'tab_toutes': 'Toutes', 'tab_afficher': 'Afficher',
+        'col_region': 'Région', 'col_prefecture': 'Préfecture', 'col_commune': 'Commune', 'col_annee': 'Année',
+        'q1': 'Très prioritaire', 'q2': 'Prioritaire', 'q3': 'Modéré', 'q4': 'Performant', 'q5': 'Très performant',
+        'i_tableau_indic': "Tableau des indicateurs d'infrastructure par commune (registre 2024). Choisissez une variable et un niveau de priorité : les communes sont classées et colorées par quintile (rouge = prioritaire, vert = performant ; inversé pour l'ancienneté).",
         'etablissements': 'Établissements', 'toilettes_lbl': 'Toilettes', 'terrain_sport': 'Terrain sport',
         'primaire_lbl': 'Primaire', 'college_lbl': 'Secondaire', 'lycee_lbl': 'Lycée',
         'biblio_lbl': 'Bibliothèque', 'electrifies_lbl': 'Bâtiments', 'par_ecole': '/école',
@@ -242,7 +247,12 @@ TRADUCTIONS = {
         'correlations': 'Correlations',
         'c_carte_pts': 'Map of schools and projects',
         'c_carte_thema': 'Thematic map -', 'par': 'by',
-        'carte_points': 'Points', 'carte_thema': 'Thematic',
+        'carte_points': 'Points', 'carte_thema': 'Thematic', 'carte_tableau': 'Table',
+        'c_tableau': 'Indicators by municipality',
+        'tab_variable': 'Variable', 'tab_priorite': 'Priority level', 'tab_toutes': 'All', 'tab_afficher': 'Apply',
+        'col_region': 'Region', 'col_prefecture': 'Prefecture', 'col_commune': 'Municipality', 'col_annee': 'Year',
+        'q1': 'Very high priority', 'q2': 'High priority', 'q3': 'Moderate', 'q4': 'Good', 'q5': 'Very good',
+        'i_tableau_indic': 'Infrastructure indicators by municipality (2024 registry). Pick a variable and a priority level: municipalities are ranked and colored by quintile (red = priority, green = good; inverted for building age).',
         'etablissements': 'Schools', 'toilettes_lbl': 'Toilets', 'terrain_sport': 'Sports field',
         'primaire_lbl': 'Primary', 'college_lbl': 'Secondary', 'lycee_lbl': 'High school',
         'biblio_lbl': 'Library', 'electrifies_lbl': 'Buildings', 'par_ecole': '/school',
@@ -503,6 +513,10 @@ def _tab2_context(region: str, pref: str, commune: str) -> dict:
         'coso_croise': o2.get_coso_croise(dfs, **t),
         'coso_bar': chart_fragment(o2.coso_type_bar_html(type_rows)) if type_rows else '<p style="padding:20px;color:#A0AEC0">Aucun projet COSO géolocalisé sur ce territoire.</p>',
         'coso_pie': chart_fragment(o2.coso_status_pie_html(status_rows)) if status_rows else '<p style="padding:20px;color:#A0AEC0">Aucun projet COSO géolocalisé sur ce territoire.</p>',
+        # Tableau complet des indicateurs par commune (indépendant du filtre —
+        # le filtrage se fait dans le tableau via variable + niveau de priorité).
+        'tableau_rows': o2.get_tableau_data(dfs),
+        'tableau_vars': o2.TABLEAU_VARIABLES,
     }
 
 
@@ -968,7 +982,7 @@ def dashboard():
             request.args.get('region', 'Toutes'),
             request.args.get('pref', 'Toutes'),
             request.args.get('commune', 'Toutes'))
-        vue = _str_arg('vue', 'thema', ['thema', 'points'])
+        vue = _str_arg('vue', 'thema', ['thema', 'points', 'tableau'])
         ind = _str_arg('ind', 'ecoles', IND_THEMA)
         niv = _str_arg('niv', 'region', NIV_THEMA)
 
