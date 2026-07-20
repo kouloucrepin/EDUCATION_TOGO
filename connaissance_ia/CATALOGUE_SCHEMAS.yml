@@ -77,17 +77,18 @@ catalogue:
 
   "02":
     df: dfs['02']
-    description: Toilettes scolaires géolocalisées — colonnes admin identiques à "01"
+    description: "Toilettes scolaires géolocalisées (1 ligne = 1 bloc) — 10228 blocs au total (chiffre du dashboard). NB : etab_nom est vide/Nsp pour ~86 % des points et les coordonnées ne coïncident pas avec celles des écoles, donc impossible de calculer un « % d'écoles avec toilettes » ; utiliser le nombre de blocs (len) ou la densité blocs/école (10228/15454 ≈ 0,66)."
     observations: 10228
     colonnes:
       toilette_type: {type: str, desc: "{Latrines a eau} | {Latrines seches} | {WCs} | {Pissotieres}…"}
+      etab_nom:      {type: str, desc: "nom d'établissement — vide/Nsp dans ~86 % des cas, NE PAS l'utiliser pour compter les écoles équipées"}
 
   "03":
     df: dfs['03']
-    description: Bâtiments scolaires (polygones) — colonnes admin identiques à "01"
+    description: "Bâtiments scolaires — 28055 bâtiments recensés (chiffre du dashboard). ATTENTION : malgré le nom du fichier, il n'y a AUCUNE colonne de statut d'électrification. Ne jamais affirmer un nombre de bâtiments « électrifiés » ; ce fichier ne donne que le nombre total de bâtiments."
     observations: 28055
     colonnes:
-      batiment_fonction: {type: str, desc: "Salle de classe | Bureau…"}
+      batiment_fonction: {type: str, desc: "usage du bâtiment (Salle de classe | Bureau…), PAS un statut d'électrification"}
       batiment_annee:    {type: str, desc: "mélange int et 'Nsp' → pd.to_numeric(..., errors='coerce')"}
 
   "04":

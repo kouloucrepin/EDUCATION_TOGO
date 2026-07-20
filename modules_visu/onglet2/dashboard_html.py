@@ -86,8 +86,8 @@ def generer_dashboard_html(regions=None):
       <div class="label">Établissements</div>
     </div>
     <div class="counter-card">
-      <div class="num">{counters["toilettes_etab"]:,}</div>
-      <div class="label">Avec toilettes ({counters["toilettes_pct"]}%)</div>
+      <div class="num">{counters["toilettes_total"]:,}</div>
+      <div class="label">Blocs de toilettes ({counters["toilettes_par_ecole"]}/école)</div>
     </div>
     <div class="counter-card">
       <div class="num">{counters["terrain_sport"]:,}</div>

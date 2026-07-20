@@ -278,7 +278,15 @@ def get_counters(dfs, regions=None, prefecture=None, commune=None):
     terrain_sport_oui = len(df[df['terrain_sport'] == 'Oui'])
     terrain_sport_pct = round(terrain_sport_oui / total_ecoles * 100, 1) if total_ecoles else 0
 
-    toilettes_etab = len(set(p['etab'] for p in toilettes)) if toilettes else 0
+    # Nombre de blocs de toilettes recensés (chiffre fiable et affiché).
+    # NB : ~86 % des points n'ont pas de nom d'établissement et les coordonnées
+    # ne coïncident pas avec celles des écoles → impossible de calculer un vrai
+    # « % d'écoles avec toilettes ». On expose donc le nombre de blocs et, à
+    # titre indicatif, la densité (blocs par établissement).
+    toilettes_total = len(toilettes) if toilettes else 0
+    toilettes_par_ecole = round(toilettes_total / total_ecoles, 2) if total_ecoles else 0
+    # conservés pour l'export standalone (dashboard_html) — ne pas afficher tels quels
+    toilettes_etab = len(set(p['etab'] for p in toilettes if p.get('etab'))) if toilettes else 0
     toilettes_pct = round(toilettes_etab / total_ecoles * 100, 1) if total_ecoles else 0
 
     coso = get_coso_projets(dfs, regions, prefecture, commune)
@@ -317,6 +325,8 @@ def get_counters(dfs, regions=None, prefecture=None, commune=None):
         'primaire': primaire,
         'college': college,
         'lycee': lycee,
+        'toilettes_total': toilettes_total,
+        'toilettes_par_ecole': toilettes_par_ecole,
         'toilettes_etab': toilettes_etab,
         'toilettes_pct': toilettes_pct,
         'terrain_sport': terrain_sport_oui,

@@ -316,10 +316,10 @@
             <div class="vb-icon"><i class="fas fa-building"></i></div>
             <div class="vb-body">
               <div class="vb-subs vb-subs-infra">
-                <span><i class="fas fa-toilet"></i> {{ t.toilettes_lbl }} {{ '{:,}'.format(counters.toilettes_etab).replace(',', ' ') }} <span class="vb-badge">{{ counters.toilettes_pct }}%</span></span>
+                <span><i class="fas fa-toilet"></i> {{ t.toilettes_lbl }} {{ '{:,}'.format(counters.toilettes_total).replace(',', ' ') }} <span class="vb-badge">{{ counters.toilettes_par_ecole }}{{ t.par_ecole }}</span></span>
                 <span><i class="fas fa-futbol"></i> {{ t.terrain_sport }} {{ '{:,}'.format(counters.terrain_sport).replace(',', ' ') }} <span class="vb-badge">{{ counters.terrain_sport_pct }}%</span></span>
                 <span><i class="fas fa-book"></i> {{ t.biblio_lbl }} {{ '{:,}'.format(counters.bibliotheques).replace(',', ' ') }}</span>
-                <span><i class="fas fa-bolt"></i> {{ t.electrifies_lbl }} {{ '{:,}'.format(counters.batiments).replace(',', ' ') }}</span>
+                <span><i class="fas fa-building"></i> {{ t.electrifies_lbl }} {{ '{:,}'.format(counters.batiments).replace(',', ' ') }}</span>
               </div>
             </div>
           </div>

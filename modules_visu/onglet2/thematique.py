@@ -33,9 +33,9 @@ INDICATEURS = {
     'college': 'Collèges',
     'lycee': 'Lycées',
     'maternelle': 'Jardins d\'enfants',
-    'toilettes': 'Établissements avec toilettes',
+    'toilettes': 'Blocs de toilettes',
     'terrain_sport': 'Établissements avec terrain de sport',
-    'batiments': 'Bâtiments électrifiés',
+    'batiments': 'Bâtiments scolaires',
     'bibliotheques': 'Établissements avec bibliothèque',
     'coso': 'Nombre de projets COSO',
     'enseignants_total': 'Effectif enseignant (préscolaire)',
@@ -164,7 +164,10 @@ def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=No
         **{c: (c, 'sum') for c in ['primaire', 'college', 'lycee', 'maternelle'] if c in e.columns},
     ).reset_index()
 
-    t = toilettes.groupby(col)['etab_nom'].nunique().rename('toilettes').reset_index()
+    # Nombre de blocs de toilettes par unité (les noms d'établissement sont
+    # renseignés pour ~14 % des points seulement : on compte les points, pas
+    # les noms distincts, sinon on sous-estime massivement).
+    t = toilettes.groupby(col).size().rename('toilettes').reset_index()
     agg = agg.merge(t, on=col, how='left')
     agg['toilettes'] = agg['toilettes'].fillna(0).astype(int)
     if ts is not None:
