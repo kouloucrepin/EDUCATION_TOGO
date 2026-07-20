@@ -305,53 +305,45 @@ def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=No
     ]
 
 
+# Variables du tableau = TOUS les indicateurs de la carte thématique.
+# fmt : 'f1' = 1 décimale ; sinon entier. inverse : valeur élevée = prioritaire.
+_TAB_FMT = {'anciennete_batiment': ('f1', True)}
 TABLEAU_VARIABLES = {
-    'ecoles':      {'label': "Écoles", 'fmt': 'int', 'inverse': False},
-    'toilettes':   {'label': "Toilettes (blocs)", 'fmt': 'int', 'inverse': False},
-    'dens_toil':   {'label': "Toilettes / école", 'fmt': 'f2', 'inverse': False},
-    'sport_pct':   {'label': "Terrain sport (%)", 'fmt': 'pct', 'inverse': False},
-    'batiments':   {'label': "Bâtiments", 'fmt': 'int', 'inverse': False},
-    'anciennete':  {'label': "Ancienneté moy. (ans)", 'fmt': 'f1', 'inverse': True},
-    'biblio':      {'label': "Bibliothèques", 'fmt': 'int', 'inverse': False},
+    k: {'label': lbl,
+        'fmt': _TAB_FMT.get(k, ('int', False))[0],
+        'inverse': _TAB_FMT.get(k, ('int', False))[1]}
+    for k, lbl in INDICATEURS.items()
 }
+# Extras utiles propres au tableau (densité / pourcentage), en fin de liste.
+TABLEAU_VARIABLES['dens_toil'] = {'label': 'Toilettes / école', 'fmt': 'f2', 'inverse': False}
+TABLEAU_VARIABLES['sport_pct'] = {'label': 'Terrain sport (%)', 'fmt': 'pct', 'inverse': False}
 
 
 def get_tableau_data(dfs, annee_ref=None):
-    """Tableau des indicateurs d'infrastructure par commune (région, préfecture,
-    commune + année de référence du registre). Une ligne = une commune."""
+    """Tableau de TOUS les indicateurs thématiques par commune (région,
+    préfecture, commune + année de référence). Une ligne = une commune."""
     import pandas as pd
     annee_ref = annee_ref or ANNEE_REF_BATIMENT
-    keys = ['region_nom_bdd', 'prefecture_nom_bdd', 'commune_nom_bdd']
-    et = dfs['etablissements']; tt = dfs['toilettes']
-    bat = dfs['batiments']; bib = dfs['bibliotheques']
-
-    g = et.groupby(keys)
-    tab = pd.DataFrame({'ecoles': g.size()})
-    tab['sport_oui'] = et[et['terrain_sport'] == 'Oui'].groupby(keys).size()
-    tab['toilettes'] = tt.groupby(keys).size()
-    tab['batiments'] = bat.groupby(keys).size()
-    tab['biblio'] = bib.groupby(keys)['etablissement_nom'].nunique() if 'etablissement_nom' in bib.columns else 0
-    # ancienneté moyenne par commune
-    ba = bat[keys + ['batiment_annee']].copy()
-    ba['_an'] = pd.to_numeric(ba['batiment_annee'], errors='coerce')
-    ba = ba[(ba['_an'] >= 1950) & (ba['_an'] <= annee_ref)]
-    tab['_an_mean'] = ba.groupby(keys)['_an'].mean()
-    tab = tab.fillna(0)
-    tab['dens_toil'] = (tab['toilettes'] / tab['ecoles']).round(2)
-    tab['sport_pct'] = (tab['sport_oui'] / tab['ecoles'] * 100).round(1)
-    tab['anciennete'] = tab['_an_mean'].apply(lambda x: round(annee_ref - x, 1) if x else 0.0)
-    tab = tab.reset_index()
-
+    # Parent région/préfecture de chaque commune (valeur la plus fréquente).
+    et = dfs['etablissements']
+    parents = et.groupby('commune_nom_bdd').agg(
+        region=('region_nom_bdd', lambda s: s.mode().iloc[0] if not s.mode().empty else s.iloc[0]),
+        prefecture=('prefecture_nom_bdd', lambda s: s.mode().iloc[0] if not s.mode().empty else s.iloc[0]),
+    )
+    units = get_agregats(dfs, niveau='commune')
     rows = []
-    for _, r in tab.iterrows():
-        rows.append({
-            'region': r['region_nom_bdd'], 'prefecture': r['prefecture_nom_bdd'],
-            'commune': r['commune_nom_bdd'], 'annee': annee_ref,
-            'ecoles': int(r['ecoles']), 'toilettes': int(r['toilettes']),
-            'dens_toil': float(r['dens_toil']), 'sport_pct': float(r['sport_pct']),
-            'batiments': int(r['batiments']), 'anciennete': float(r['anciennete']),
-            'biblio': int(r['biblio']),
-        })
+    for u in units:
+        com = u['unite']
+        reg = parents.loc[com, 'region'] if com in parents.index else ''
+        pref = parents.loc[com, 'prefecture'] if com in parents.index else ''
+        ecoles = u['ecoles'] or 1
+        row = {'region': reg, 'prefecture': pref, 'commune': com, 'annee': annee_ref}
+        for k in INDICATEURS:
+            # 'anciennete_batiment' est stocké sous 'anciennete' dans l'agrégat.
+            row[k] = round(u.get('anciennete', 0.0), 1) if k == 'anciennete_batiment' else u.get(k, 0)
+        row['dens_toil'] = round(u['toilettes'] / ecoles, 2)
+        row['sport_pct'] = round(u['terrain_sport'] / ecoles * 100, 1)
+        rows.append(row)
     rows.sort(key=lambda x: (x['region'], x['prefecture'], x['commune']))
     return rows
 
