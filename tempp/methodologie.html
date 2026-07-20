@@ -27,6 +27,7 @@
   --accent: #43C994;
 }
 
+html { background: var(--bg); }
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: var(--bg);
@@ -175,7 +176,7 @@ h4 {
 p, li {
   font-size: 10pt;
   line-height: 1.75;
-  color: #CBD5E1;
+  color: #DCE5EF;
   margin-bottom: 8px;
 }
 
@@ -246,8 +247,11 @@ tr:nth-child(even) td { background: var(--bg3); }
 
 @media print {
   .cover { min-height: 100vh; }
-  body { font-size: 10pt; background: white; }
-  .content-wrap { max-width: 100%; padding: 40px 50px; }
+  /* On CONSERVE le thème sombre à l'impression : le texte est clair et
+     ne serait pas lisible sur un fond blanc. */
+  html, body { background: var(--bg) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 10pt; }
+  .content-wrap { max-width: 720px; padding: 28px 24px 40px; }
 }
 
 /* ===== TOC ===== */
