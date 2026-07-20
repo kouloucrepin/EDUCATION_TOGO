@@ -44,10 +44,10 @@ catalogue:
 
   "12":
     df: dfs['12']
-    description: Statistiques du secondaire — UNE SEULE année (2015)
+    description: Statistiques du secondaire — UNE SEULE année (2015), photographie ancienne
     observations: 154
     colonnes:
-      indicateur: {type: str, desc: "Nombre Etablissements | Nombre de salles de classe | Nombre Elèves | Nombre Enseignants"}
+      indicateur: {type: str, desc: "Nombre Etablissements | Nombre de salles de classe | Nombre Elèves | Nombre Enseignants. ATTENTION : 'Nombre Etablissements' ici = comptage 2015 (ex. 1472 collèges), DIFFÉRENT et plus ancien que le registre actuel affiché par le dashboard (2304 collèges, fichier 01). Pour 'combien de collèges/lycées', utiliser le fichier 01."}
       secteur:    {type: str, desc: "ici = niveau : Collège | Lycée"}
       type-salle: {type: str, desc: "Total | Dur | Banco | Autres (pertinent pour les salles)"}
       region:     {type: str, desc: "SANS accent. Togo | Golfe Lomé (ordre inversé vs 08-10) | Maritime | Plateaux | Centrale | Kara | Savanes"}
@@ -72,7 +72,7 @@ catalogue:
       prefecture_nom_bdd:      {type: str, desc: "39 préfectures"}
       commune_nom_bdd:         {type: str, desc: "117 communes"}
       canton_nom_bdd:          {type: str, desc: "395 cantons"}
-      etablissement_categorie: {type: str, desc: "Ecole primaire | Jardin (maternelle) | College | Lycée…"}
+      etablissement_categorie: {type: str, desc: "SOURCE OFFICIELLE du nombre d'établissements par type (chiffres du dashboard) : 'Ecole primaire'=8165, 'Jardin (maternelle)'=4277, 'College'=2304, 'Lycée'=708. Total = 15454. Utiliser CE fichier pour 'combien de collèges/lycées/écoles/jardins', PAS le fichier des statistiques du secondaire 2015."}
       geometry:                {type: str, desc: "POINT (lon lat) en WKT · manquants en texte : Nsp, N/a, Néant"}
 
   "02":
@@ -100,7 +100,7 @@ catalogue:
     description: Microprojets COSO (nord du Togo), programme EN COURS 2022-2026 en 7 vagues — état d'avancement à la date d'extraction, PAS un bilan 2013-2022. Garder ces colonnes, ignorer les ~75 autres
     observations: 241
     colonnes:
-      type:                       {type: str, desc: "nature du projet (bâtiments primaire, blocs latrines, clôtures…)"}
+      type:                       {type: str, desc: "nature du projet. Répartition sur les 241 projets : bâtiments primaire=89, blocs latrines=81, clôtures=27, préscolaire=23, CEG=13, lycée=5. Le GRAPHIQUE 'Types de projets réalisés' du dashboard ne montre que les 86 géolocalisés (primaire=39, latrines=18…) — préciser 'sur les 241' ou 'parmi les géolocalisés' selon le cas."}
       current_status_of_the_site: {type: str, desc: "Réception provisoire | Réception définitive | Achevé…"}
       progress_percent:           {type: float, desc: "avancement 0-100"}
       estimated_cost:             {type: float, desc: "montant FCFA"}
