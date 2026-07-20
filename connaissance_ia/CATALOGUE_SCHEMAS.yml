@@ -108,7 +108,7 @@ catalogue:
       number_of_classrooms:       {type: float, desc: "salles de classe créées"}
       number_of_latrine_blocks:   {type: float, desc: "blocs latrines créés"}
       population:                 {type: float, desc: "bénéficiaires"}
-      latitude:                   {type: float, desc: "renseignée pour ~86 projets sur 241 seulement (idem longitude)"}
+      latitude:                   {type: float, desc: "86 projets géolocalisés sur 241 (les 0/NaN = NON géolocalisés, à exclure). Géolocalisés = latitude.notna()"}
       longitude:                  {type: float, desc: "voir latitude"}
       hierarchy:                  {type: str, desc: "'VILLAGE > CANTON > COMMUNE > PREFECTURE > REGION' en MAJUSCULES SANS ACCENTS → normaliser avant croisement avec '01'"}
 
