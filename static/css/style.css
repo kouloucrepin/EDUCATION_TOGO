@@ -535,7 +535,7 @@ body.dark .trend-badge.flat { background: #33290F; color: #E0A93E; }
 }
 .explore-head .kicker::before { content: ''; width: 26px; height: 2px; background: var(--or); border-radius: 2px; }
 .explore-head h2 { font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.1rem); font-weight: 800; letter-spacing: -0.7px; margin-top: 10px; }
-.cards-grid { max-width: 1440px; margin: 0 auto; padding: 0 28px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.cards-grid { max-width: 1200px; margin: 0 auto; padding: 0 28px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 1280px) { .cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tab-card {
   background: white; border-radius: 14px; padding: 24px 22px; text-decoration: none; color: var(--encre);
