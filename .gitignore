@@ -17,6 +17,8 @@ build/
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+# … sauf le notebook documenté de l'indice (on veut le voir sur GitHub)
+!notebooks/indice_vulnerabilite_infrastructures.ipynb
 
 # Environnement virtuel
 venv/
@@ -51,6 +53,7 @@ exports_onglet4/
 *.bak
 
 # Fichiers de debug / scratch du projet (ne pas versionner)
+_scratch/
 test_*.py
 onglet3_dashboard.html
 data/.last_update
