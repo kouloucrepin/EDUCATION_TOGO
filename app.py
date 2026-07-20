@@ -103,7 +103,7 @@ TRADUCTIONS = {
         'choisir_pref': "Choisissez d'abord une préfecture",
         'appliquer': 'Appliquer', 'sources': 'Sources', 'accueil': 'Accueil',
         'pdf_btn': 'Note méthodologique (PDF)',
-        'rapport_btn': "Rapport d'analyse (PDF)",
+        'rapport_btn': "Rapport d'analyse (PDF)", 'indice_btn': 'Indice de vulnérabilité (PDF)',
         'voir_pdf': 'Aperçu', 'telecharger': 'Télécharger', 'nouvel_onglet': 'Ouvrir dans un onglet', 'fermer': 'Fermer',
         'donnees_src': 'Données INSEED / MEPS', 'chargement': 'Chargement des données...',
         'tt_theme': 'Mode sombre / clair', 'tt_menu': 'Plier / déplier le menu',
@@ -228,7 +228,7 @@ TRADUCTIONS = {
         'choisir_pref': 'Choose a prefecture first',
         'appliquer': 'Apply', 'sources': 'Sources', 'accueil': 'Home',
         'pdf_btn': 'Methodology note (PDF)',
-        'rapport_btn': 'Analysis report (PDF)',
+        'rapport_btn': 'Analysis report (PDF)', 'indice_btn': 'Vulnerability index (PDF)',
         'voir_pdf': 'Preview', 'telecharger': 'Download', 'nouvel_onglet': 'Open in a tab', 'fermer': 'Close',
         'donnees_src': 'INSEED / MEPS data', 'chargement': 'Loading data...',
         'tt_theme': 'Dark / light mode', 'tt_menu': 'Collapse / expand menu',
@@ -359,12 +359,12 @@ RECOMMANDATIONS = {
                      "Sensibilisation communautaire contre mariages et grossesses précoces",
                      "Rééquilibrer les corps enseignants : 91,8 % de femmes au préscolaire, modèles mixtes au secondaire"],
          'suivi': 'Écart BEPC national ≤ 2 pts en 2030, aucun écart régional > 5 pts'},
-        {'prio': 2, 'icone': 'fa-school', 'titre': "Améliorer les infrastructures scolaires",
-         'constat': "0,66 bloc de toilettes par établissement (10 228 pour 15 454 écoles) et 11 bibliothèques recensées dans tout le pays (Cartographie).",
-         'actions': ["Programme WASH : un bloc sanitaire par école, filles / garçons séparés",
-                     "Étendre le modèle COSO (bâtiment + latrines) aux préfectures denses du sud sous-équipées",
-                     "Un point lecture par inspection comme première marche vers de vraies bibliothèques"],
-         'suivi': "Ratio toilettes / école ≥ 1 et 50 bibliothèques d'ici 2028"},
+        {'prio': 2, 'icone': 'fa-school', 'titre': "Cibler les infrastructures via l'indice de vulnérabilité",
+         'constat': "L'indice de vulnérabilité infrastructures (carte par défaut, Cartographie) classe les communes : les plus sous-équipées sont Golfe et Wawa (indice > 80/100), les préfectures Danyi, Wawa, Kloto en tête. À l'échelle du pays, 0,66 bloc de toilettes par école et 11 bibliothèques seulement.",
+         'actions': ["Programme WASH ciblé sur le quintile 'Très prioritaire' de l'indice (communes des Plateaux et grand Lomé sous-équipées)",
+                     "Étendre le modèle COSO (bâtiment + latrines) aux préfectures à indice élevé du sud, en complément de l'effort au nord",
+                     "Rénover en priorité le parc vétuste (composante ancienneté de l'indice) et un point lecture par inspection"],
+         'suivi': "Réduire de moitié le nombre de communes du quintile 'Très prioritaire' et ratio toilettes / école ≥ 1 d'ici 2028"},
         {'prio': 3, 'icone': 'fa-database', 'titre': 'Publier des données à jour',
          'constat': "Le taux de promotion s'arrête en 2019, les statistiques du secondaire datent de 2015, le préscolaire n'a qu'une année de données (sources du dashboard).",
          'actions': ["Reprendre la publication annuelle des séries interrompues (promotion, secondaire)",
@@ -397,12 +397,12 @@ RECOMMANDATIONS = {
                      'Community campaigns against early marriage and pregnancy',
                      'Rebalance teaching staff: 91.8% women in preschool, mixed role models in secondary'],
          'suivi': 'National BEPC gap ≤ 2 pts by 2030, no regional gap > 5 pts'},
-        {'prio': 2, 'icone': 'fa-school', 'titre': 'Improve school infrastructure',
-         'constat': '0.66 toilet block per school (10,228 for 15,454 schools) and 11 libraries recorded in the whole country (Mapping).',
-         'actions': ['WASH programme: one sanitary block per school, separate for girls and boys',
-                     'Extend the COSO model (building + latrines) to under-equipped dense southern prefectures',
-                     'One reading point per inspectorate as a first step towards real libraries'],
-         'suivi': 'Toilet/school ratio ≥ 1 and 50 libraries by 2028'},
+        {'prio': 2, 'icone': 'fa-school', 'titre': 'Target infrastructure using the vulnerability index',
+         'constat': "The infrastructure vulnerability index (default map, Mapping) ranks municipalities: the most under-equipped are Golfe and Wawa (index > 80/100), with prefectures Danyi, Wawa, Kloto on top. Nationally, 0.66 toilet block per school and only 11 libraries.",
+         'actions': ["WASH programme focused on the index's 'very high priority' quintile (under-equipped Plateaux and greater Lomé municipalities)",
+                     'Extend the COSO model (building + latrines) to high-index southern prefectures, complementing the northern effort',
+                     'Renovate the ageing stock first (age component of the index) and add a reading point per inspectorate'],
+         'suivi': "Halve the number of municipalities in the 'very high priority' quintile and reach a toilet/school ratio ≥ 1 by 2028"},
         {'prio': 3, 'icone': 'fa-database', 'titre': 'Publish up-to-date data',
          'constat': 'The promotion rate stops in 2019, secondary statistics date from 2015, preschool has a single year of data (dashboard sources).',
          'actions': ['Resume yearly publication of the interrupted series (promotion, secondary)',
@@ -983,7 +983,7 @@ def dashboard():
             request.args.get('pref', 'Toutes'),
             request.args.get('commune', 'Toutes'))
         vue = _str_arg('vue', 'thema', ['thema', 'points', 'tableau'])
-        ind = _str_arg('ind', 'ecoles', IND_THEMA)
+        ind = _str_arg('ind', 'indice_vuln_infra', IND_THEMA)
         niv = _str_arg('niv', 'region', NIV_THEMA)
 
         arbre = _territoires()
@@ -1031,9 +1031,9 @@ def carte_thematique():
         request.args.get('region', 'Toutes'),
         request.args.get('pref', 'Toutes'),
         request.args.get('commune', 'Toutes'))
-    ind = request.args.get('ind', 'ecoles')
+    ind = request.args.get('ind', 'indice_vuln_infra')
     if ind not in IND_THEMA:
-        ind = 'ecoles'
+        ind = 'indice_vuln_infra'
     niv = request.args.get('niv', 'region')
     if niv not in NIV_THEMA:
         niv = 'region'

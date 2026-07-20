@@ -28,6 +28,7 @@ NIVEAU_COLS = {
 NIVEAU_LABELS = {'region': 'Région', 'prefecture': 'Préfecture', 'commune': 'Commune'}
 
 INDICATEURS = {
+    'indice_vuln_infra': 'Indice de vulnérabilité infrastructures (/100)',
     'ecoles': "Nombre d'établissements",
     'primaire': 'Établissements primaires',
     'college': 'Collèges',
@@ -45,10 +46,18 @@ INDICATEURS = {
 }
 
 # Indicateurs où une valeur ÉLEVÉE est défavorable (à prioriser en rouge) :
-# ici l'ancienneté — plus les bâtiments sont vieux, plus la zone est prioritaire.
-INDICATEURS_INVERSES = {'anciennete_batiment'}
+# l'ancienneté (bâtiments vieux) et l'indice de vulnérabilité (élevé = fragile).
+INDICATEURS_INVERSES = {'anciennete_batiment', 'indice_vuln_infra'}
 # Année de référence pour le calcul de l'âge des bâtiments.
 ANNEE_REF_BATIMENT = 2024
+
+# --- Indice de vulnérabilité INFRASTRUCTURES ------------------------------
+# Composite (formatif) de 4 dimensions par école, normalisées 0-100 sur la
+# distribution des 117 communes (winsorisation 5/95) ; l'ACP a servi à valider
+# la structure (voir la note PDF). Score = équipement ; vulnérabilité = 100-équip.
+POIDS_VULN = {'toil_par_ecole': 0.30, 'bat_par_ecole': 0.20,
+              'sport_pct': 0.20, 'age_moyen': 0.30}
+_indice_cache: dict = {}
 
 GEOJSON_NIVEAUX = {
     'region': 'togo_regions.geojson',
@@ -122,9 +131,61 @@ def _load_geojson(niveau):
     return _geo_cache[niveau]
 
 
+def _mm_winsor(s):
+    """Normalisation min-max 0-100 avec winsorisation 5/95."""
+    import pandas as pd
+    s = s.clip(s.quantile(0.05), s.quantile(0.95))
+    return (s - s.min()) / (s.max() - s.min()) * 100 if s.max() != s.min() else s * 0
+
+
+def _indice_infra_communes(dfs):
+    """DataFrame par commune : region, prefecture, ecoles, indice_vuln_infra
+    (0-100, élevé = plus vulnérable). Mis en cache."""
+    import pandas as pd
+    cle = id(dfs.get('etablissements'))
+    if cle in _indice_cache:
+        return _indice_cache[cle]
+    keys = ['region_nom_bdd', 'prefecture_nom_bdd', 'commune_nom_bdd']
+    et, tt, bat = dfs['etablissements'], dfs['toilettes'], dfs['batiments']
+    g = et.groupby(keys)
+    d = pd.DataFrame({'ecoles': g.size()})
+    d['sport_oui'] = et[et['terrain_sport'] == 'Oui'].groupby(keys).size()
+    d['toilettes'] = tt.groupby(keys).size()
+    d['batiments'] = bat.groupby(keys).size()
+    ba = bat[keys + ['batiment_annee']].copy()
+    ba['an'] = pd.to_numeric(ba['batiment_annee'], errors='coerce')
+    ba = ba[(ba['an'] >= 1950) & (ba['an'] <= ANNEE_REF_BATIMENT)]
+    d['age_moyen'] = ANNEE_REF_BATIMENT - ba.groupby(keys)['an'].mean()
+    d = d.fillna(0)
+    d['toil_par_ecole'] = d['toilettes'] / d['ecoles']
+    d['bat_par_ecole'] = d['batiments'] / d['ecoles']
+    d['sport_pct'] = d['sport_oui'] / d['ecoles'] * 100
+    equip = (_mm_winsor(d['toil_par_ecole']) * POIDS_VULN['toil_par_ecole']
+             + _mm_winsor(d['bat_par_ecole']) * POIDS_VULN['bat_par_ecole']
+             + _mm_winsor(d['sport_pct']) * POIDS_VULN['sport_pct']
+             + (100 - _mm_winsor(d['age_moyen'])) * POIDS_VULN['age_moyen'])
+    d['indice_vuln_infra'] = (100 - equip).round(1)
+    d = d.reset_index()
+    _indice_cache[cle] = d
+    return d
+
+
+def indice_infra_par_niveau(dfs, niveau):
+    """dict {nom d'unité: indice} agrégé au niveau demandé (moyenne des communes
+    pondérée par le nombre d'écoles)."""
+    d = _indice_infra_communes(dfs)
+    if niveau == 'commune':
+        return dict(zip(d['commune_nom_bdd'], d['indice_vuln_infra']))
+    col = {'region': 'region_nom_bdd', 'prefecture': 'prefecture_nom_bdd'}[niveau]
+    d = d.assign(_w=d['indice_vuln_infra'] * d['ecoles'])
+    agg = d.groupby(col).agg(w=('_w', 'sum'), e=('ecoles', 'sum'))
+    return {k: round(r['w'] / r['e'], 1) for k, r in agg.iterrows() if r['e']}
+
+
 def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=None):
     """Agrège écoles + toilettes + COSO par unité administrative, avec centroïde."""
     col = NIVEAU_COLS[niveau]
+    idx_map = indice_infra_par_niveau(dfs, niveau)   # indice de vulnérabilité infra
     ecoles = dfs['etablissements']
     toilettes = dfs['toilettes']
     coso = dfs['coso']
@@ -294,6 +355,7 @@ def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=No
             'terrain_sport': int(r['terrain_sport']),
             'coso': int(r['coso']),
             'batiments': int(r['batiments']),
+            'indice_vuln_infra': float(idx_map.get(str(r[col]), 0.0)),
             'anciennete': float(r.get('anciennete', 0.0)),
             'bat_dates': int(r.get('bat_dates', 0)),
             'bibliotheques': int(r['bibliotheques']),
@@ -307,7 +369,7 @@ def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=No
 
 # Variables du tableau = TOUS les indicateurs de la carte thématique.
 # fmt : 'f1' = 1 décimale ; sinon entier. inverse : valeur élevée = prioritaire.
-_TAB_FMT = {'anciennete_batiment': ('f1', True)}
+_TAB_FMT = {'anciennete_batiment': ('f1', True), 'indice_vuln_infra': ('f1', True)}
 TABLEAU_VARIABLES = {
     k: {'label': lbl,
         'fmt': _TAB_FMT.get(k, ('int', False))[0],
@@ -372,10 +434,13 @@ def _valeurs_par_polygone(rows, niveau):
         # Ancienneté : moyenne pondérée par le nombre de bâtiments datés.
         d['_age_w'] += r.get('anciennete', 0.0) * r.get('bat_dates', 0)
         d['bat_dates'] += r.get('bat_dates', 0)
+        # Indice de vulnérabilité : moyenne pondérée par le nombre d'écoles.
+        d['_idx_w'] = d.get('_idx_w', 0.0) + r.get('indice_vuln_infra', 0.0) * r['ecoles']
         d['unites'].append(r['unite'])
-    # Moyenne d'ancienneté finalisée par polygone (None si aucun bâtiment daté).
+    # Moyennes finalisées par polygone.
     for d in acc.values():
         d['anciennete_batiment'] = round(d['_age_w'] / d['bat_dates'], 1) if d['bat_dates'] else 0.0
+        d['indice_vuln_infra'] = round(d['_idx_w'] / d['ecoles'], 1) if d['ecoles'] else 0.0
     # Le polygone « Lomé Commune » est enclavé dans Golfe : même valeur (Grand Lomé)
     if niveau == 'prefecture' and 'GOLFE' in acc and 'LOME COMMUNE' not in acc:
         acc['LOME COMMUNE'] = dict(acc['GOLFE'])
@@ -454,6 +519,7 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
             p['Terrain sport'] = f"{d['terrain_sport']:,}".replace(',', ' ')
             p['Projets COSO'] = str(d['coso'])
             p['Bâtiments'] = f"{d['batiments']:,}".replace(',', ' ')
+            p['Indice vuln.'] = f"{d['indice_vuln_infra']:.0f}/100".replace('.', ',')
             p['Ancienneté moy.'] = f"{d['anciennete_batiment']:.1f} ans".replace('.', ',') if d.get('bat_dates') else 'N/D'
             p['Bibliothèques'] = f"{d['bibliotheques']:,}".replace(',', ' ')
             p['Enseign. présc.'] = f"{d['enseignants_total']:,}".replace(',', ' ')
@@ -471,6 +537,7 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
             p['Terrain sport'] = 'N/D'
             p['Projets COSO'] = 'N/D'
             p['Bâtiments'] = 'N/D'
+            p['Indice vuln.'] = 'N/D'
             p['Ancienneté moy.'] = 'N/D'
             p['Bibliothèques'] = 'N/D'
             p['Enseign. présc.'] = 'N/D'
@@ -489,8 +556,8 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
             },
             highlight_function=lambda ft: {'weight': 3, 'color': '#1A202C', 'fillOpacity': 0.95},
             tooltip=folium.GeoJsonTooltip(
-                fields=['nom', 'Écoles', 'Toilettes', 'Terrain sport', 'Projets COSO', 'Bâtiments', 'Ancienneté moy.', 'Bibliothèques', 'Enseign. présc.', 'dont hommes'],
-                aliases=['', 'Écoles :', 'Toilettes :', 'Terrain sport :', 'Projets COSO :', 'Bâtiments :', 'Ancienneté moy. :', 'Bibliothèques :', 'Enseign. présc. :', 'dont hommes :'],
+                fields=['nom', 'Indice vuln.', 'Écoles', 'Toilettes', 'Terrain sport', 'Projets COSO', 'Bâtiments', 'Ancienneté moy.', 'Bibliothèques', 'Enseign. présc.', 'dont hommes'],
+                aliases=['', 'Indice vuln. :', 'Écoles :', 'Toilettes :', 'Terrain sport :', 'Projets COSO :', 'Bâtiments :', 'Ancienneté moy. :', 'Bibliothèques :', 'Enseign. présc. :', 'dont hommes :'],
                 style='font-size:12px;',
             ),
     ).add_to(m)

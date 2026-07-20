@@ -169,6 +169,10 @@ body.sidebar-collapsed .sidebar { width: 0; padding: 18px 0; }
 }
 .btn-pdf-eye:hover { background: var(--or); border-color: var(--or); color: #1A202C; }
 .btn-pdf-eye-rapport { border-color: rgba(255,206,0,0.45); }
+.btn-pdf-indice { margin-top: 0; color: #fff; background: rgba(15,90,168,0.20); border-color: rgba(15,90,168,0.5); }
+.btn-pdf-indice i { color: #6BA5FF; }
+.btn-pdf-indice:hover { background: var(--bleu, #0F5AA8); border-color: var(--bleu, #0F5AA8); color: #fff; }
+.btn-pdf-eye-indice { border-color: rgba(15,90,168,0.5); }
 
 /* Visionneuse PDF (modale plein écran) */
 .pdf-modal {

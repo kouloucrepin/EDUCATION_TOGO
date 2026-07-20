@@ -177,6 +177,16 @@
           <i class="fas fa-eye"></i>
         </button>
       </div>
+      <div class="pdf-row">
+        <a class="btn-pdf btn-pdf-indice" href="{{ url_for('static', filename='pdf/Indice_Vulnerabilite_Infrastructures.pdf') }}" download>
+          <i class="fas fa-shield-halved"></i> {{ t.indice_btn }}
+        </a>
+        <button class="btn-pdf-eye btn-pdf-eye-indice" title="{{ t.voir_pdf }}"
+          data-pdf="{{ url_for('static', filename='pdf/Indice_Vulnerabilite_Infrastructures.pdf') }}"
+          data-titre="{{ t.indice_btn }}" onclick="voirPdf(this.dataset.pdf, this.dataset.titre)">
+          <i class="fas fa-eye"></i>
+        </button>
+      </div>
     </div>
     </div><!-- /sidebar-inner -->
   </aside>
