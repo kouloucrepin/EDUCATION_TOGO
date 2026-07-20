@@ -17,17 +17,14 @@ __pycache__/
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
 
-# Fichiers de travail non nécessaires au serveur
+# Dossiers de travail / doc non nécessaires au serveur
 *.ipynb
-publier_hf.ps1
-dashboard-mockup.html
-index.html
-dashboard-data.json
-analyse_detaillee.py
-analyse_finale.py
-analyse_initiale.py
-_check_sources.py
-fic.txt
+notebooks/
+archive/
+docs/
+tempp/
+test_*.py
+onglet3_dashboard.html
 
 # Docker lui-même
 Dockerfile

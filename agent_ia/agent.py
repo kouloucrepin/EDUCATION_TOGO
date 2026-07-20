@@ -23,7 +23,7 @@ SUGGESTIONS = [
 
 _PROMPT_ROUTEUR = """Tu es le routeur de l'assistant du Dashboard Éducation Togo.
 Classe la question de l'utilisateur dans UNE des routes :
-- "connaissance" : présentation de la plateforme, définitions des termes clés (BEPC, taux, score composite, COSO...), sources des données, à quoi sert le dashboard.
+- "connaissance" : présentation de la plateforme, définitions des termes clés (BEPC, taux, score composite, indice de vulnérabilité infrastructures, COSO...), sources des données, à quoi sert le dashboard. Les questions sur l'indice de vulnérabilité (définition, région/commune la plus vulnérable, classement) vont ICI.
 - "bdd" : effectifs, statistiques, chiffres, distributions, comparaisons, évolutions, classements — tout ce qui demande de calculer sur les données, MÊME si tu doutes que la donnée existe (la route bdd sait expliquer ce qui manque).
 - "hors_contexte" : sans rapport avec l'éducation au Togo ou la plateforme.
 

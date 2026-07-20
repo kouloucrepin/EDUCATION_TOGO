@@ -49,3 +49,9 @@ exports_onglet4/
 *.tmp
 *.log
 *.bak
+
+# Fichiers de debug / scratch du projet (ne pas versionner)
+test_*.py
+onglet3_dashboard.html
+data/.last_update
+tempp/*.pdf

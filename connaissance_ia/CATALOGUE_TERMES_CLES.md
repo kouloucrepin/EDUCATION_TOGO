@@ -9,6 +9,16 @@
   63 achèvent le collège, 27 le lycée.
 - **Score composite** : note 0-100 par région combinant transition (25 %), BEPC (25 %), promotion (20 %),
   scolarisation (15 %) et achèvement collège (15 %) — sert au classement ; N/D si aucune composante régionale.
+- **Indice de vulnérabilité infrastructures** : indicateur DÉRIVÉ du dashboard (pas une colonne des fichiers),
+  note 0-100 où **élevé = plus sous-équipé / prioritaire**. Il combine 4 dimensions par école, normalisées sur
+  les 117 communes : toilettes/école (30 %), bâtiments/école (20 %), % terrain de sport (20 %), ancienneté des
+  bâtiments inversée (30 %). Calculé par commune, puis agrégé préfecture/région (moyenne pondérée par le nombre
+  d'écoles). Données = registre géolocalisé de 2024 ; structure validée par ACP (voir la note PDF).
+  **Valeurs par région** : Maritime 60,6 (la plus vulnérable) · Plateaux 51,7 · Kara 48,9 · Centrale 39,7 ·
+  Savanes 37,8 (la moins vulnérable — à l'inverse des résultats scolaires).
+  **Préfectures les plus vulnérables** : Danyi 75,4 · Wawa 74,2 · Kloto 73,2 · Golfe 72,6 · Agou 65,5 · Agoè-Nyivé 65,4.
+  **Communes les plus vulnérables** : Golfe 1 (83,2) · Wawa 1 (82,1) · Golfe 4 (78,4) · Danyi 2 (78,0) · Kloto 1 (77,6).
+  Idée clé : les zones les moins équipées sont au SUD (grand Lomé) et dans les Plateaux, PAS aux Savanes.
 - **Écart filles-garçons** : taux Féminin − taux Masculin au BEPC ; négatif = en défaveur des filles.
 - **COSO** : projet « Cohésion sociale des régions nord du golfe de Guinée » — microprojets d'infrastructures
   dans les zones vulnérables du nord.
