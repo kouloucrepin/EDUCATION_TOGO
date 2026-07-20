@@ -38,10 +38,17 @@ INDICATEURS = {
     'batiments': 'Bâtiments scolaires',
     'bibliotheques': 'Établissements avec bibliothèque',
     'coso': 'Nombre de projets COSO',
+    'anciennete_batiment': 'Ancienneté moyenne des bâtiments (ans)',
     'enseignants_total': 'Effectif enseignant (préscolaire)',
     'enseignants_femmes': 'Enseignantes (femmes)',
     'enseignants_hommes': 'Enseignants (hommes)',
 }
+
+# Indicateurs où une valeur ÉLEVÉE est défavorable (à prioriser en rouge) :
+# ici l'ancienneté — plus les bâtiments sont vieux, plus la zone est prioritaire.
+INDICATEURS_INVERSES = {'anciennete_batiment'}
+# Année de référence pour le calcul de l'âge des bâtiments.
+ANNEE_REF_BATIMENT = 2024
 
 GEOJSON_NIVEAUX = {
     'region': 'togo_regions.geojson',
@@ -246,8 +253,22 @@ def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=No
         b_agg = batiments.groupby(col).size().rename('batiments').reset_index()
         agg = agg.merge(b_agg, on=col, how='left')
         agg['batiments'] = agg['batiments'].fillna(0).astype(int)
+        # Ancienneté moyenne : âge = ANNEE_REF - année de construction, en ne
+        # gardant que les années plausibles (le fichier mélange int et 'Nsp',
+        # avec quelques valeurs aberrantes type 2 ou 2917).
+        bb = batiments[[col, 'batiment_annee']].copy()
+        bb['_an'] = pd.to_numeric(bb['batiment_annee'], errors='coerce')
+        bb = bb[(bb['_an'] >= 1950) & (bb['_an'] <= ANNEE_REF_BATIMENT)]
+        age_agg = bb.groupby(col)['_an'].agg(['mean', 'size']).reset_index()
+        age_agg.columns = [col, '_an_mean', 'bat_dates']
+        age_agg['anciennete'] = (ANNEE_REF_BATIMENT - age_agg['_an_mean']).round(1)
+        agg = agg.merge(age_agg[[col, 'anciennete', 'bat_dates']], on=col, how='left')
+        agg['anciennete'] = agg['anciennete'].fillna(0.0)
+        agg['bat_dates'] = agg['bat_dates'].fillna(0).astype(int)
     else:
         agg['batiments'] = 0
+        agg['anciennete'] = 0.0
+        agg['bat_dates'] = 0
 
     biblios = dfs.get('bibliotheques')
     if biblios is not None and col in biblios.columns:
@@ -273,6 +294,8 @@ def get_agregats(dfs, niveau='region', regions=None, prefecture=None, commune=No
             'terrain_sport': int(r['terrain_sport']),
             'coso': int(r['coso']),
             'batiments': int(r['batiments']),
+            'anciennete': float(r.get('anciennete', 0.0)),
+            'bat_dates': int(r.get('bat_dates', 0)),
             'bibliotheques': int(r['bibliotheques']),
             'enseignants_total': int(r.get('enseignants_total', 0)),
             'enseignants_femmes': int(r.get('enseignants_femmes', 0)),
@@ -289,7 +312,7 @@ def _valeurs_par_polygone(rows, niveau):
         cle = _norm(r['unite'])
         if niveau == 'prefecture':
             cle = ALIAS_PREFECTURES.get(cle, cle)
-        d = acc.setdefault(cle, {'ecoles': 0, 'primaire': 0, 'college': 0, 'lycee': 0, 'maternelle': 0, 'toilettes': 0, 'terrain_sport': 0, 'coso': 0, 'batiments': 0, 'bibliotheques': 0, 'enseignants_total': 0, 'enseignants_femmes': 0, 'enseignants_hommes': 0, 'unites': []})
+        d = acc.setdefault(cle, {'ecoles': 0, 'primaire': 0, 'college': 0, 'lycee': 0, 'maternelle': 0, 'toilettes': 0, 'terrain_sport': 0, 'coso': 0, 'batiments': 0, 'bibliotheques': 0, 'enseignants_total': 0, 'enseignants_femmes': 0, 'enseignants_hommes': 0, '_age_w': 0.0, 'bat_dates': 0, 'unites': []})
         d['ecoles'] += r['ecoles']
         d['primaire'] += r.get('primaire', 0)
         d['college'] += r.get('college', 0)
@@ -303,7 +326,13 @@ def _valeurs_par_polygone(rows, niveau):
         d['enseignants_total'] += r.get('enseignants_total', 0)
         d['enseignants_femmes'] += r.get('enseignants_femmes', 0)
         d['enseignants_hommes'] += r.get('enseignants_hommes', 0)
+        # Ancienneté : moyenne pondérée par le nombre de bâtiments datés.
+        d['_age_w'] += r.get('anciennete', 0.0) * r.get('bat_dates', 0)
+        d['bat_dates'] += r.get('bat_dates', 0)
         d['unites'].append(r['unite'])
+    # Moyenne d'ancienneté finalisée par polygone (None si aucun bâtiment daté).
+    for d in acc.values():
+        d['anciennete_batiment'] = round(d['_age_w'] / d['bat_dates'], 1) if d['bat_dates'] else 0.0
     # Le polygone « Lomé Commune » est enclavé dans Golfe : même valeur (Grand Lomé)
     if niveau == 'prefecture' and 'GOLFE' in acc and 'LOME COMMUNE' not in acc:
         acc['LOME COMMUNE'] = dict(acc['GOLFE'])
@@ -364,9 +393,14 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
         p = ft['properties']
         p['nom'] = nom.replace(' Region', '')
         if d:
-            couleur = _couleur_quintile(d[indicateur], seuils) if max(valeurs) != min(valeurs) else COULEURS_QUINTILES[2]
-            p['_couleur'] = couleur
-            p['_q'] = _indice_quintile(d[indicateur], seuils) if max(valeurs) != min(valeurs) else 2
+            if max(valeurs) != min(valeurs):
+                idx = _indice_quintile(d[indicateur], seuils)
+                if indicateur in INDICATEURS_INVERSES:
+                    idx = 4 - idx   # valeur élevée = prioritaire (rouge)
+            else:
+                idx = 2
+            p['_couleur'] = COULEURS_QUINTILES[idx]
+            p['_q'] = idx
             p['_avec_donnee'] = True
             p['Écoles'] = f"{d['ecoles']:,}".replace(',', ' ')
             p['Primaire'] = f"{d['primaire']:,}".replace(',', ' ')
@@ -377,6 +411,7 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
             p['Terrain sport'] = f"{d['terrain_sport']:,}".replace(',', ' ')
             p['Projets COSO'] = str(d['coso'])
             p['Bâtiments'] = f"{d['batiments']:,}".replace(',', ' ')
+            p['Ancienneté moy.'] = f"{d['anciennete_batiment']:.1f} ans".replace('.', ',') if d.get('bat_dates') else 'N/D'
             p['Bibliothèques'] = f"{d['bibliotheques']:,}".replace(',', ' ')
             p['Enseign. présc.'] = f"{d['enseignants_total']:,}".replace(',', ' ')
             p['dont hommes'] = f"{d['enseignants_hommes']:,}".replace(',', ' ')
@@ -393,6 +428,7 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
             p['Terrain sport'] = 'N/D'
             p['Projets COSO'] = 'N/D'
             p['Bâtiments'] = 'N/D'
+            p['Ancienneté moy.'] = 'N/D'
             p['Bibliothèques'] = 'N/D'
             p['Enseign. présc.'] = 'N/D'
             p['dont hommes'] = 'N/D'
@@ -410,8 +446,8 @@ def _carte_choroplethe(rows, indicateur, niveau, restreindre=False):
             },
             highlight_function=lambda ft: {'weight': 3, 'color': '#1A202C', 'fillOpacity': 0.95},
             tooltip=folium.GeoJsonTooltip(
-                fields=['nom', 'Écoles', 'Toilettes', 'Terrain sport', 'Projets COSO', 'Bâtiments', 'Bibliothèques', 'Enseign. présc.', 'dont hommes'],
-                aliases=['', 'Écoles :', 'Toilettes :', 'Terrain sport :', 'Projets COSO :', 'Bâtiments :', 'Bibliothèques :', 'Enseign. présc. :', 'dont hommes :'],
+                fields=['nom', 'Écoles', 'Toilettes', 'Terrain sport', 'Projets COSO', 'Bâtiments', 'Ancienneté moy.', 'Bibliothèques', 'Enseign. présc.', 'dont hommes'],
+                aliases=['', 'Écoles :', 'Toilettes :', 'Terrain sport :', 'Projets COSO :', 'Bâtiments :', 'Ancienneté moy. :', 'Bibliothèques :', 'Enseign. présc. :', 'dont hommes :'],
                 style='font-size:12px;',
             ),
     ).add_to(m)
