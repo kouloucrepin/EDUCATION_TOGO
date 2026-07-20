@@ -157,12 +157,26 @@
         INSEED · MEPS · Banque Mondiale · UNESCO · Projets COSO<br>
         opendata.gouv.tg
       </div>
-      <a class="btn-pdf" href="{{ url_for('static', filename='pdf/Methodologie_Dashboard_Education_Togo.pdf') }}" download>
-        <i class="fas fa-file-pdf"></i> {{ t.pdf_btn }}
-      </a>
-      <a class="btn-pdf btn-pdf-rapport" href="{{ url_for('static', filename='pdf/Rapport_Analyse_Education_Togo.pdf') }}" download>
-        <i class="fas fa-file-lines"></i> {{ t.rapport_btn }}
-      </a>
+      <div class="pdf-row">
+        <a class="btn-pdf" href="{{ url_for('static', filename='pdf/Methodologie_Dashboard_Education_Togo.pdf') }}" download>
+          <i class="fas fa-file-pdf"></i> {{ t.pdf_btn }}
+        </a>
+        <button class="btn-pdf-eye" title="{{ t.voir_pdf }}"
+          data-pdf="{{ url_for('static', filename='pdf/Methodologie_Dashboard_Education_Togo.pdf') }}"
+          data-titre="{{ t.pdf_btn }}" onclick="voirPdf(this.dataset.pdf, this.dataset.titre)">
+          <i class="fas fa-eye"></i>
+        </button>
+      </div>
+      <div class="pdf-row">
+        <a class="btn-pdf btn-pdf-rapport" href="{{ url_for('static', filename='pdf/Rapport_Analyse_Education_Togo.pdf') }}" download>
+          <i class="fas fa-file-lines"></i> {{ t.rapport_btn }}
+        </a>
+        <button class="btn-pdf-eye btn-pdf-eye-rapport" title="{{ t.voir_pdf }}"
+          data-pdf="{{ url_for('static', filename='pdf/Rapport_Analyse_Education_Togo.pdf') }}"
+          data-titre="{{ t.rapport_btn }}" onclick="voirPdf(this.dataset.pdf, this.dataset.titre)">
+          <i class="fas fa-eye"></i>
+        </button>
+      </div>
     </div>
     </div><!-- /sidebar-inner -->
   </aside>
@@ -502,6 +516,21 @@
   <div class="txt">{{ t.chargement }}</div>
 </div>
 
+<!-- ===== VISIONNEUSE PDF ===== -->
+<div class="pdf-modal" id="pdfModal" onclick="if(event.target===this) fermerPdf()">
+  <div class="pdf-modal-box">
+    <div class="pdf-modal-head">
+      <span id="pdfModalTitre"><i class="fas fa-file-pdf"></i> PDF</span>
+      <div class="pdf-modal-actions">
+        <a class="pdf-modal-btn" id="pdfModalDl" href="#" download title="{{ t.telecharger }}"><i class="fas fa-download"></i></a>
+        <a class="pdf-modal-btn" id="pdfModalTab" href="#" target="_blank" rel="noopener" title="{{ t.nouvel_onglet }}"><i class="fas fa-up-right-from-square"></i></a>
+        <button class="pdf-modal-btn" onclick="fermerPdf()" title="{{ t.fermer }}"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <iframe id="pdfModalFrame" title="Aperçu PDF"></iframe>
+  </div>
+</div>
+
 <!-- ===== CHATBOT ===== -->
 <button class="chat-toggle" id="chatToggle" onclick="toggleChat()" title="{{ t.chat_nom }}">
   <i class="fas fa-comment-dots"></i>
@@ -835,6 +864,22 @@ function applyTheme(dark){
   localStorage.setItem('tg-theme', dark ? 'dark' : 'light');
 }
 function toggleTheme(){ applyTheme(!document.body.classList.contains('dark')); }
+
+/* ===== Visionneuse PDF intégrée ===== */
+function voirPdf(url, titre){
+  document.getElementById('pdfModalFrame').src = url + '#view=FitH';
+  document.getElementById('pdfModalTitre').innerHTML = '<i class="fas fa-file-pdf"></i> ' + (titre || 'PDF');
+  document.getElementById('pdfModalDl').href = url;
+  document.getElementById('pdfModalTab').href = url;
+  document.getElementById('pdfModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function fermerPdf(){
+  document.getElementById('pdfModal').classList.remove('open');
+  document.getElementById('pdfModalFrame').src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') fermerPdf(); });
 window.addEventListener('load', () => {
   if (localStorage.getItem('tg-theme') === 'dark') applyTheme(true);
 });

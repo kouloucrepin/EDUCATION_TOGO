@@ -151,11 +151,52 @@ body.sidebar-collapsed .sidebar { width: 0; padding: 18px 0; }
 .btn-pdf:hover i { color: #1A202C; }
 /* Variante « rapport d'analyse » : bouton plein, mis en avant */
 .btn-pdf-rapport {
-  margin-top: 8px; color: #fff;
+  margin-top: 0; color: #fff;
   background: rgba(255,206,0,0.14); border-color: rgba(255,206,0,0.45);
 }
 .btn-pdf-rapport i { color: var(--or); }
 .btn-pdf-rapport:hover { background: var(--or); border-color: var(--or); color: #1A202C; }
+
+/* Ligne : bouton de téléchargement + bouton œil (aperçu) */
+.pdf-row { display: flex; gap: 6px; margin-top: 10px; align-items: stretch; }
+.pdf-row:first-of-type { margin-top: 14px; }
+.pdf-row .btn-pdf { flex: 1; margin-top: 0; }
+.btn-pdf-eye {
+  flex-shrink: 0; width: 38px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.22); border-radius: 8px; cursor: pointer;
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); font-size: 13px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-pdf-eye:hover { background: var(--or); border-color: var(--or); color: #1A202C; }
+.btn-pdf-eye-rapport { border-color: rgba(255,206,0,0.45); }
+
+/* Visionneuse PDF (modale plein écran) */
+.pdf-modal {
+  position: fixed; inset: 0; z-index: 1200; display: none;
+  background: rgba(6,12,18,0.78); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  padding: 3vh 3vw; align-items: center; justify-content: center;
+}
+.pdf-modal.open { display: flex; }
+.pdf-modal-box {
+  width: min(1000px, 96vw); height: 94vh; display: flex; flex-direction: column;
+  background: #1c2430; border: 1px solid #2c3a49; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5);
+}
+.pdf-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; background: var(--vert-nuit, #002B20); color: #fff;
+  font-weight: 600; font-size: 13px;
+}
+.pdf-modal-head i { color: var(--or); }
+.pdf-modal-actions { display: flex; gap: 6px; }
+.pdf-modal-btn {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.2); border-radius: 7px; background: rgba(255,255,255,0.08);
+  color: #fff; text-decoration: none; cursor: pointer; font-size: 13px; transition: background 0.2s;
+}
+.pdf-modal-btn:hover { background: rgba(255,255,255,0.2); }
+.pdf-modal-box iframe { flex: 1; width: 100%; border: none; background: #525659; }
+@media (max-width: 640px) { .pdf-modal { padding: 0; } .pdf-modal-box { width: 100vw; height: 100vh; border-radius: 0; } }
 
 /* ===== MAIN + TABS ===== */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
