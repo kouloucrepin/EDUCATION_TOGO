@@ -326,6 +326,7 @@
                 <span><i class="fas fa-child"></i> {{ t.primaire_lbl }} {{ '{:,}'.format(counters.primaire).replace(',', ' ') }}</span>
                 <span><i class="fas fa-users"></i> {{ t.college_lbl }} {{ '{:,}'.format(counters.college).replace(',', ' ') }}</span>
                 <span><i class="fas fa-graduation-cap"></i> {{ t.lycee_lbl }} {{ '{:,}'.format(counters.lycee).replace(',', ' ') }}</span>
+                {% if counters.anciennete_moyenne %}<span><i class="fas fa-clock-rotate-left"></i> {{ t.anciennete_lbl }} {{ ('%.1f'|format(counters.anciennete_moyenne))|replace('.', ',') }} {{ t.ans }}</span>{% endif %}
               </div>
             </div>
           </div>

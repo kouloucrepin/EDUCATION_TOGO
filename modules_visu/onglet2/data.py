@@ -301,6 +301,14 @@ def get_counters(dfs, regions=None, prefecture=None, commune=None):
 
     bat_df = filter_territoire(dfs['batiments'], regions, prefecture, commune)
     batiments = len(bat_df)
+    # Ancienneté moyenne des bâtiments (âge = 2024 - année de construction,
+    # années plausibles 1950-2024 ; le fichier mêle int et 'Nsp').
+    _an = pd.to_numeric(bat_df['batiment_annee'], errors='coerce') if 'batiment_annee' in bat_df.columns else None
+    if _an is not None:
+        _an = _an[(_an >= 1950) & (_an <= 2024)]
+        anciennete_moyenne = round(2024 - _an.mean(), 1) if len(_an) else 0
+    else:
+        anciennete_moyenne = 0
 
     biblio_df = filter_territoire(dfs['bibliotheques'], regions, prefecture, commune)
     bibliotheques = biblio_df['etablissement_nom'].nunique() if 'etablissement_nom' in biblio_df.columns else 0
@@ -325,6 +333,7 @@ def get_counters(dfs, regions=None, prefecture=None, commune=None):
         'primaire': primaire,
         'college': college,
         'lycee': lycee,
+        'anciennete_moyenne': anciennete_moyenne,
         'toilettes_total': toilettes_total,
         'toilettes_par_ecole': toilettes_par_ecole,
         'toilettes_etab': toilettes_etab,
