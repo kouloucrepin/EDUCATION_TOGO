@@ -724,6 +724,16 @@ body.dark .seg-mode { border-color: rgba(67,201,148,0.4); }
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
 }
+.msg.frappe .frappe-label {
+  margin-left: 6px; font-size: 12px; font-style: italic; color: #6B7A88;
+  vertical-align: middle;
+}
+body.dark .msg.frappe .frappe-label { color: #93A4B3; }
+/* Curseur clignotant pendant la révélation progressive du texte */
+.msg.bot .msg-corps.flux::after {
+  content: '▍'; margin-left: 1px; color: var(--vert, #006A4E);
+  animation: chatPts 1s steps(1) infinite;
+}
 
 /* ---- Onglet 5 : recommandations ---- */
 .reco-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }

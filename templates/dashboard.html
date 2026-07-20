@@ -894,18 +894,89 @@ function majSuggestions(posee){
   });
 }
 
-/* Indicateur « l'assistant écrit… » */
+/* Indicateur « l'assistant écrit… » (avec libellé de phase pour le streaming) */
 function montrerFrappe(){
   const c = document.getElementById('chatMessages'), d = document.createElement('div');
   d.className = 'msg bot frappe'; d.id = 'chatFrappe';
-  d.innerHTML = '<span class="msg-icon"><i class="fas fa-graduation-cap"></i></span> <span class="pts"><i></i><i></i><i></i></span>';
+  d.innerHTML = '<span class="msg-icon"><i class="fas fa-graduation-cap"></i></span> <span class="pts"><i></i><i></i><i></i></span> <span class="frappe-label" id="chatFrappeLabel"></span>';
   c.insertBefore(d, c.lastElementChild); c.scrollTop = c.scrollHeight;
 }
+function majFrappeLabel(txt){ const l = document.getElementById('chatFrappeLabel'); if (l) l.textContent = txt; }
 function enleverFrappe(){ const d = document.getElementById('chatFrappe'); if (d) d.remove(); }
 
-/* Interroge l'agent IA (package agent_ia côté serveur) ; en cas d'échec,
-   bascule sur les réponses locales pré-écrites pour rester démontrable hors ligne */
+/* Ré-exécute les <script> injectés via innerHTML (inertes autrement) — pour
+   que les graphiques ECharts s'initialisent. */
+function reexecScripts(el){
+  el.querySelectorAll('script').forEach(s => {
+    const n = document.createElement('script');
+    n.textContent = s.textContent;
+    s.parentNode.replaceChild(n, s);
+  });
+}
+function scrollChat(){ const c = document.getElementById('chatMessages'); if (c) c.scrollTop = c.scrollHeight; }
+const CHAT_PHASES = {
+{% if lang == 'en' %}  analyse: 'Analyzing the question…', donnees: 'Reading the data…', redaction: 'Writing…', graphique: 'Building the chart…'
+{% else %}  analyse: 'Analyse de la question…', donnees: 'Consultation des données…', redaction: 'Rédaction…', graphique: 'Construction du graphique…'
+{% endif %}};
+
+/* Interroge l'agent IA en STREAMING (SSE) : statuts en direct pendant le
+   traitement, puis révélation progressive de la réponse (effet machine à
+   écrire), puis rendu HTML final (tableaux + graphiques). En cas d'échec du
+   flux, repli sur la version non-streamée puis sur les réponses locales. */
 function demanderAgent(question){
+  montrerFrappe();
+  let acc = '', corps = null, termine = false;
+  function assurerBulle(){
+    if (corps) return;
+    enleverFrappe();
+    const c = document.getElementById('chatMessages'), d = document.createElement('div');
+    d.className = 'msg bot';
+    d.innerHTML = '<span class="msg-icon"><i class="fas fa-graduation-cap"></i></span><div class="msg-corps"></div>';
+    c.insertBefore(d, c.lastElementChild);
+    corps = d.querySelector('.msg-corps');
+    corps.classList.add('flux');
+  }
+  function traiter(d){
+    if (d.type === 'status') majFrappeLabel(CHAT_PHASES[d.phase] || '…');
+    else if (d.type === 'delta'){ assurerBulle(); acc += d.text; corps.textContent = acc; scrollChat(); }
+    else if (d.type === 'done'){ assurerBulle(); corps.classList.remove('flux'); corps.innerHTML = d.html; reexecScripts(corps); termine = true; scrollChat(); }
+    else if (d.type === 'error') throw new Error(d.erreur || 'agent');
+  }
+  fetch('{{ url_for("api_chat_stream") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: question, session: CHAT_SESSION})
+  }).then(rep => {
+    if (!rep.ok || !rep.body) throw new Error('flux indisponible');
+    const reader = rep.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    function pump(){
+      return reader.read().then(({done, value}) => {
+        if (done) return;
+        buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0){
+          const bloc = buf.slice(0, i); buf = buf.slice(i + 2);
+          const ligne = bloc.split('\n').find(l => l.startsWith('data: '));
+          if (ligne){ try { traiter(JSON.parse(ligne.slice(6))); } catch(e){ if (e.message !== 'agent') { /* json partiel */ } else throw e; } }
+        }
+        return pump();
+      });
+    }
+    return pump();
+  }).then(() => {
+    enleverFrappe();
+    if (!termine && !corps) chatBotReply(question);   // rien reçu : repli local
+    majSuggestions(question);
+  }).catch(() => {
+    enleverFrappe();
+    if (corps) { majSuggestions(question); return; }  // déjà affiché : ne pas dupliquer
+    demanderAgentSimple(question);                     // repli non-streamé
+  });
+}
+
+/* Repli non-streamé : une seule requête, réponse complète d'un coup. */
+function demanderAgentSimple(question){
   montrerFrappe();
   fetch('{{ url_for("api_chat") }}', {
     method: 'POST',

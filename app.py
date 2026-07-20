@@ -14,6 +14,7 @@ import gzip
 import html as html_std
 import json
 import os
+import queue
 import re
 import threading
 import time
@@ -56,6 +57,8 @@ def _compression_gzip(reponse):
     compressible = (reponse.mimetype or '').startswith('text/') or \
         reponse.mimetype in ('application/json', 'application/javascript')
     if (not compressible
+            or reponse.mimetype == 'text/event-stream'   # SSE : ne JAMAIS bufferiser
+            or reponse.is_streamed                        # réponse générée en flux
             or reponse.direct_passthrough
             or reponse.status_code != 200
             or 'Content-Encoding' in reponse.headers
@@ -821,12 +824,76 @@ def api_chat():
         resultat = _agent_pour(session_id).repondre(question)
     except Exception as e:  # noqa: BLE001 — le client bascule sur les réponses locales
         return jsonify({'erreur': f'{type(e).__name__}: {str(e)[:200]}'}), 500
+    return jsonify({'html': _rendu_html(resultat), 'route': resultat['route'],
+                    'iterations': resultat['iterations']})
+
+
+def _rendu_html(resultat):
+    """Réponse markdown de l'agent → HTML sûr, marqueurs [GRAPHIQUE_n]
+    remplacés par les vrais fragments ECharts."""
     contenu = _md_en_html(resultat['reponse'])
-    # Les marqueurs [GRAPHIQUE_n] deviennent de vrais fragments ECharts
     for cle, fragment in (resultat.get('graphiques') or {}).items():
         contenu = contenu.replace(f'[{cle}]', fragment)
-    return jsonify({'html': contenu, 'route': resultat['route'],
-                    'iterations': resultat['iterations']})
+    return contenu
+
+
+def _apercu_flux(texte):
+    """Texte simple pour l'effet « machine à écrire » : sans marqueurs de
+    graphique ni symboles markdown (le rendu HTML complet arrive à la fin)."""
+    t = re.sub(r'\[GRAPHIQUE_\d+\]', '', str(texte))
+    t = re.sub(r'[*`]', '', t)
+    return re.sub(r'\n{3,}', '\n\n', t).strip()
+
+
+def _chunks_flux(texte, taille=3):
+    """Découpe le texte en petits groupes de mots (espaces conservés)."""
+    mots = re.findall(r'\S+\s*', texte)
+    for i in range(0, len(mots), taille):
+        yield ''.join(mots[i:i + taille])
+
+
+@app.route('/api/chat-stream', methods=['POST'])
+def api_chat_stream():
+    donnees = request.get_json(silent=True) or {}
+    question = str(donnees.get('question', '')).strip()[:500]
+    if not question:
+        return jsonify({'erreur': 'question vide'}), 400
+    session_id = str(donnees.get('session', 'defaut'))[:64]
+
+    def stream():
+        evts = queue.Queue()
+        resultat = {}
+
+        def worker():
+            try:
+                resultat['ok'] = _agent_pour(session_id).repondre(
+                    question, progression=evts.put)
+            except Exception as e:  # noqa: BLE001
+                resultat['err'] = f'{type(e).__name__}: {str(e)[:200]}'
+            finally:
+                evts.put({'type': '__fin__'})
+
+        threading.Thread(target=worker, daemon=True).start()
+        # 1) statuts en direct pendant que l'agent travaille (routage, outils…)
+        while True:
+            evt = evts.get()
+            if evt.get('type') == '__fin__':
+                break
+            yield 'data: ' + json.dumps(evt, ensure_ascii=False) + '\n\n'
+        # 2) échec éventuel de l'agent
+        if 'err' in resultat:
+            yield 'data: ' + json.dumps({'type': 'error', 'erreur': resultat['err']}, ensure_ascii=False) + '\n\n'
+            return
+        r = resultat['ok']
+        # 3) révélation progressive du texte (effet machine à écrire)
+        for chunk in _chunks_flux(_apercu_flux(r['reponse'])):
+            yield 'data: ' + json.dumps({'type': 'delta', 'text': chunk}, ensure_ascii=False) + '\n\n'
+            time.sleep(0.03)
+        # 4) rendu final complet (markdown converti + graphiques ECharts)
+        yield 'data: ' + json.dumps({'type': 'done', 'html': _rendu_html(r), 'route': r['route']}, ensure_ascii=False) + '\n\n'
+
+    return Response(stream(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 def _langue():

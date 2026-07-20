@@ -215,7 +215,8 @@ class AgentEducation:
         paragraphes = [p for p in brut.split('\n\n') if p.strip()]
         return _limiter_lignes(paragraphes[-1] if paragraphes else brut)
 
-    def _repondre_bdd(self, question, iterations_restantes):
+    def _repondre_bdd(self, question, iterations_restantes, progression=None):
+        p = progression if callable(progression) else (lambda e: None)
         base = _PROMPT_BDD.format(
             regles=connaissances.regles(),
             catalogue=connaissances.schemas(),
@@ -246,6 +247,7 @@ class AgentEducation:
             if nom not in outils.OUTILS:
                 conversation += f'\n\nERREUR : outil inconnu {nom!r}. Outils valides : {sorted(outils.OUTILS)}.'
                 continue
+            p({'type': 'status', 'phase': 'graphique' if nom == 'generer_graphique' else 'donnees'})
             arguments = obj.get('arguments', {}) or {}
             try:
                 resultat = outils.OUTILS[nom](**arguments)
@@ -265,22 +267,29 @@ class AgentEducation:
         return _MSG_HORS_CONTEXTE + exemples
 
     # -- point d'entrée -------------------------------------------------------
-    def repondre(self, question):
+    def repondre(self, question, progression=None):
         """Répond à une question.
+
+        progression : callback optionnel appelé avec des événements
+        {'type':'status','phase': ...} au fil du traitement (pour le streaming).
 
         Retourne {'route', 'reponse', 'graphiques', 'iterations', 'trace'} —
         'graphiques' associe chaque marqueur [GRAPHIQUE_n] présent dans la
         réponse à son fragment HTML ECharts (à injecter au rendu)."""
+        p = progression if callable(progression) else (lambda e: None)
         self.trace = []
         outils.consommer_graphiques()          # purge d'éventuels restes du thread
         question = str(question).strip()
+        p({'type': 'status', 'phase': 'analyse'})
         route = self.router(question)
         if route == 'hors_contexte':
             reponse = self._hors_contexte()
         elif route == 'connaissance':
+            p({'type': 'status', 'phase': 'redaction'})
             reponse = self._repondre_connaissance(question)
         else:
-            reponse = self._repondre_bdd(question, config.MAX_ITERATIONS - 1)
+            p({'type': 'status', 'phase': 'donnees'})
+            reponse = self._repondre_bdd(question, config.MAX_ITERATIONS - 1, p)
         self.memoire.ajouter(question, reponse)
         return {'route': route, 'reponse': reponse,
                 'graphiques': outils.consommer_graphiques(),
