@@ -331,6 +331,7 @@
               </select>
             </label>
             <button type="button" class="tab-indic-btn" onclick="appliquerTableau()"><i class="fas fa-check"></i> {{ t.tab_afficher }}</button>
+            <button type="button" class="tab-indic-btn tab-indic-dl" onclick="telechargerTableau()" title="{{ t.tab_telecharger }}"><i class="fas fa-download"></i> {{ t.tab_telecharger }}</button>
             <span id="tabCount" class="tab-indic-count"></span>
           </div>
           <div class="hscroll tab-indic-scroll">
@@ -386,6 +387,22 @@
                 .forEach(r => tbody.appendChild(r));
             const c = document.getElementById('tabCount');
             if (c) c.textContent = shown + ' / ' + rows.length + ' communes';
+          }
+          function telechargerTableau(){
+            const table = document.getElementById('tabIndic');
+            const heads = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+            const esc = v => (v.includes(';') || v.includes('"') || v.includes('\n')) ? '"' + v.replace(/"/g,'""') + '"' : v;
+            const lignes = [heads.map(esc).join(';')];
+            table.querySelectorAll('tbody tr').forEach(tr => {
+              if (tr.style.display === 'none') return;   // uniquement les lignes affichées (filtre en cours)
+              lignes.push(Array.from(tr.querySelectorAll('td')).map(td => esc(td.textContent.trim())).join(';'));
+            });
+            const blob = new Blob(['﻿' + lignes.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'indicateurs_communes_togo.csv';
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(a.href);
           }
           appliquerTableau();
           </script>
