@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Note Méthodologique — Dashboard Éducation Togo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --vert: #006A4E;
+  --vert-fonce: #004D3A;
+  --vert-nuit: #002B20;
+  --vert-clair: #E8F5E9;
+  --or: #FFCE00;
+  --rouge: #EF3340;
+  --bleu: #0033A0;
+  --rose: #e91e63;
+  --bg: #0F1923;
+  --bg2: #162230;
+  --bg3: #1A2C3E;
+  --surface: #1E3348;
+  --text: #E2E8F0;
+  --text-mute: #8899B4;
+  --border: #2A4055;
+  --accent: #43C994;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 10.5pt;
+}
+
+/* ===== COVER ===== */
+.cover {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: linear-gradient(160deg, #002B20 0%, #004D3A 30%, #006A4E 60%, #003D2E 100%);
+  padding: 60px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(255,206,0,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(239,51,64,0.06) 0%, transparent 50%);
+}
+.cover-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--or);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+.cover h1 {
+  font-size: 32pt;
+  font-weight: 800;
+  color: white;
+  line-height: 1.15;
+  margin-bottom: 12px;
+  max-width: 720px;
+}
+.cover h1 span { color: var(--or); }
+.cover .subtitle {
+  font-size: 13pt;
+  font-weight: 400;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 32px;
+  max-width: 560px;
+}
+.cover-meta {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.cover-meta .meta-item {
+  text-align: center;
+}
+.cover-meta .meta-label {
+  font-size: 8.5pt;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+}
+.cover-meta .meta-value {
+  font-size: 11pt;
+  font-weight: 600;
+  color: white;
+  margin-top: 2px;
+}
+
+.cover-line {
+  width: 60px;
+  height: 3px;
+  background: var(--or);
+  border-radius: 2px;
+  margin: 16px auto;
+}
+
+.page-break { page-break-before: always; }
+
+/* ===== Captures d'écran ===== */
+.shot { margin: 14px 0 6px; page-break-inside: avoid; }
+.shot img { width: 100%; border: 1px solid var(--border); border-radius: 8px; display: block;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.shot figcaption { font-size: 8.5pt; color: var(--text-mute); margin-top: 7px;
+  font-style: italic; text-align: center; }
+.shot.small img { max-width: 360px; margin: 0 auto; }
+
+/* ===== CONTENT ===== */
+.content-wrap {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 50px 50px 80px;
+}
+
+h2 {
+  font-size: 18pt;
+  font-weight: 700;
+  color: white;
+  margin: 36px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--vert);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h2 .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--vert);
+  color: white;
+  font-size: 13pt;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+h3 {
+  font-size: 13pt;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 24px 0 10px;
+}
+
+h4 {
+  font-size: 11pt;
+  font-weight: 600;
+  color: var(--or);
+  margin: 18px 0 8px;
+}
+
+p, li {
+  font-size: 10pt;
+  line-height: 1.75;
+  color: #CBD5E1;
+  margin-bottom: 8px;
+}
+
+ul, ol { padding-left: 22px; margin: 8px 0 12px; }
+li { margin-bottom: 4px; }
+
+strong { color: white; font-weight: 600; }
+em { color: var(--or); font-style: normal; font-weight: 500; }
+
+/* ===== TABLES ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0 18px;
+  font-size: 9pt;
+}
+th {
+  background: var(--vert-fonce);
+  color: white;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  font-size: 8.5pt;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+td {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  color: #CBD5E1;
+  background: var(--bg2);
+}
+tr:nth-child(even) td { background: var(--bg3); }
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin: 14px 0;
+}
+.card-title {
+  font-size: 10pt;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 8pt;
+  font-weight: 600;
+}
+.badge-vert { background: rgba(0,106,78,0.3); color: #43C994; }
+.badge-or { background: rgba(255,206,0,0.2); color: var(--or); }
+.badge-rouge { background: rgba(239,51,64,0.2); color: var(--rouge); }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 12px 0;
+}
+
+@media print {
+  .cover { min-height: 100vh; }
+  body { font-size: 10pt; background: white; }
+  .content-wrap { max-width: 100%; padding: 40px 50px; }
+}
+
+/* ===== TOC ===== */
+.toc { margin: 16px 0 24px; }
+.toc-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg2);
+  margin-bottom: 6px;
+  border-left: 3px solid var(--vert);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 10pt;
+  font-weight: 500;
+}
+.toc-item:hover { background: var(--surface); }
+.toc-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--vert);
+  color: white;
+  font-weight: 700;
+  font-size: 10pt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ===== TAG ===== */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tag-dataset { background: rgba(0,106,78,0.3); color: #43C994; }
+.tag-kpi { background: rgba(255,206,0,0.15); color: var(--or); }
+.tag-alert { background: rgba(239,51,64,0.2); color: var(--rouge); }
+.tag-info { background: rgba(0,51,160,0.25); color: #6BA5FF; }
+
+.footer-note {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 8pt;
+  color: var(--text-mute);
+  text-align: center;
+}
+
+.coverage-bar {
+  display: flex;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 6px 0;
+  font-size: 8pt;
+  font-weight: 600;
+}
+.coverage-bar .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+.seg-vert { background: var(--vert); }
+.seg-or { background: #D4A017; }
+.seg-rouge { background: var(--rouge); }
+.seg-bleu { background: var(--bleu); }
+
+.alert-box {
+  background: rgba(239,51,64,0.1);
+  border: 1px solid rgba(239,51,64,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 10px 0;
+  font-size: 9.5pt;
+}
+.alert-box strong { color: var(--rouge); }
+
+.info-box {
+  background: rgba(0,51,160,0.1);
+  border: 1px solid rgba(0,51,160,0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 10px 0;
+  font-size: 9.5pt;
+}
+.info-box strong { color: #6BA5FF; }
+
+.spacer { height: 1px; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="cover-badge">Défi Togo AI Lab</div>
+  <div class="cover-line"></div>
+  <h1>Note <span>Méthodologique</span></h1>
+  <p class="subtitle">Dashboard de pilotage du système éducatif togolais — 2013-2022</p>
+  <div class="cover-meta">
+    <div class="meta-item">
+      <div class="meta-label">Version</div>
+      <div class="meta-value">2.1 — Juillet 2026</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Sources</div>
+      <div class="meta-value">16 jeux de données</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Période</div>
+      <div class="meta-value">1960 — 2023</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Indicateurs</div>
+      <div class="meta-value">200+ suivis</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="page-break"></div>
+<div class="content-wrap">
+  <h2><span class="num">S</span>Sommaire</h2>
+  <div class="toc">
+    <a class="toc-item" href="#s1"><span class="toc-num">1</span> Contexte et objectifs</a>
+    <a class="toc-item" href="#s2"><span class="toc-num">2</span> Sources de données</a>
+    <a class="toc-item" href="#s3"><span class="toc-num">3</span> Architecture du dashboard</a>
+    <a class="toc-item" href="#s4"><span class="toc-num">4</span> Méthodologie par onglet</a>
+    <a class="toc-item" href="#s5"><span class="toc-num">5</span> Indicateurs et métriques clés</a>
+    <a class="toc-item" href="#s6"><span class="toc-num">6</span> Score composite de vulnérabilité</a>
+    <a class="toc-item" href="#s7"><span class="toc-num">7</span> Assistant IA conversationnel</a>
+    <a class="toc-item" href="#s8"><span class="toc-num">8</span> Pièges et limitations</a>
+    <a class="toc-item" href="#s9"><span class="toc-num">9</span> Références et sources externes</a>
+  </div>
+</div>
+
+<!-- ============ SECTION 1 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s1">
+  <h2><span class="num">1</span>Contexte et objectifs</h2>
+
+  <h3>Pourquoi ce dashboard ?</h3>
+  <p>Le <strong>Dashboard Éducation Togo</strong> est un outil de pilotage stratégique destiné aux décideurs du ministère de l'Enseignement primaire et secondaire (MEPS), aux partenaires techniques et financiers, et à la société civile. Il a été développé dans le cadre du <strong>Défi Togo AI Lab</strong>, initiative visant à exploiter les données ouvertes pour améliorer la planification éducative.</p>
+
+  <p>Le système éducatif togolais scolarise plus de <strong>2,5 millions d'élèves</strong> répartis dans <strong>15 454 établissements</strong> sur l'ensemble du territoire. Malgré des progrès significatifs depuis 2013 — notamment un taux d'achèvement du collège passé de 36,6 % à 62,7 % — des disparités territoriales et de genre persistent, et la part du budget allouée à l'éducation a chuté de <strong>19,4 % (2021) à 14,7 % (2022)</strong>.</p>
+
+  <h3>Objectifs</h3>
+  <ol>
+    <li><strong>Visualiser</strong> l'état du système éducatif à travers des indicateurs clés (KPI) actualisés</li>
+    <li><strong>Cartographier</strong> les infrastructures scolaires et sanitaires sur l'ensemble du territoire</li>
+    <li><strong>Comparer</strong> les performances des 6 régions et 39 préfectures</li>
+    <li><strong>Analyser</strong> les disparités de genre dans l'accès à l'éducation</li>
+    <li><strong>Guider</strong> les décisions d'investissement à l'aide d'un score composite de vulnérabilité</li>
+  </ol>
+
+  <h3>Périmètre</h3>
+  <p>Le dashboard couvre la période <strong>2013-2022</strong> pour les indicateurs nationaux, avec des séries longues remontant jusqu'à <strong>1960</strong> (Banque Mondiale). Il intègre <strong>16 jeux de données</strong> issus de 6 sources différentes, allant des établissements scolaires aux projets d'infrastructure COSO, en passant par les résultats aux examens et les données budgétaires.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📊 4 onglets interactifs</div>
+      <p style="font-size:9pt;margin:0">Vue d'ensemble nationale, cartographie des infrastructures, performances &amp; parité, recommandations</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🤖 Assistant IA intégré</div>
+      <p style="font-size:9pt;margin:0">Chat en langage naturel, réponses calculées sur les données en streaming · Interface bilingue FR/EN, mode sombre</p>
+    </div>
+  </div>
+
+  <figure class="shot">
+    <img src="assets/accueil.jpg" alt="Page d'accueil du dashboard">
+    <figcaption>Page d'accueil — hero, chiffres clés et accès aux quatre vues du tableau de bord.</figcaption>
+  </figure>
+</div>
+
+<!-- ============ SECTION 2 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s2">
+  <h2><span class="num">2</span>Sources de données</h2>
+
+  <p>Le dashboard s'appuie sur <strong>16 jeux de données</strong> structurés, dont 14 fichiers CSV, 1 fichier GeoJSON et 1 fichier de schéma. Ces données proviennent de sources officielles togolaises et internationales.</p>
+
+  <table>
+    <tr><th>#</th><th>Fichier</th><th>Contenu</th><th>Source</th><th>Lignes</th></tr>
+    <tr><td>01</td><td>etablissements-scolaires.csv</td><td>15 454 écoles géolocalisées</td><td>MEPS</td><td>15 455</td></tr>
+    <tr><td>02</td><td>toilettes-scolaires.csv</td><td>10 228 toilettes géolocalisées</td><td>MEPS</td><td>10 229</td></tr>
+    <tr><td>03</td><td>batiments-electrification.csv</td><td>28 055 bâtiments (polygones)</td><td>MEPS</td><td>28 056</td></tr>
+    <tr><td>04</td><td>bibliotheques.csv</td><td>11 bibliothèques scolaires</td><td>MEPS</td><td>12</td></tr>
+    <tr><td>05</td><td>professeurs-schema.csv</td><td>Schéma — données privées</td><td>MEPS</td><td>46</td></tr>
+    <tr><td>06</td><td>education-resultats-scolaires.csv</td><td>Indicateurs nationaux 2013-2022</td><td>INSEED/MEPS</td><td>482</td></tr>
+    <tr><td>07</td><td>sdg4-data-togo.csv</td><td>Indicateurs ODD4 UNESCO 1970-2023</td><td>UNESCO</td><td>6 102</td></tr>
+    <tr><td>08</td><td>taux-promotion-primaire-region.csv</td><td>Promotion primaire par région 2014-2019</td><td>MEPS</td><td>127</td></tr>
+    <tr><td>09</td><td>admission-bepc-region-sexe.csv</td><td>BEPC par région et sexe 2011-2022</td><td>MEPS</td><td>256</td></tr>
+    <tr><td>10</td><td>transition-primaire-secondaire.csv</td><td>Transition primaire→secondaire 2014-2022</td><td>MEPS</td><td>193</td></tr>
+    <tr><td>11</td><td>adolescents-non-scolarises.csv</td><td>% ados hors école 1960-2023</td><td>Banque Mondiale</td><td>65</td></tr>
+    <tr><td>12</td><td>statistiques-secondaire.csv</td><td>Effectifs bruts secondaire 2015</td><td>MEPS</td><td>155</td></tr>
+    <tr><td>13</td><td>enseignants-prescolaire-inspection.csv</td><td>Enseignants préscolaire par inspection</td><td>MEPS</td><td>211</td></tr>
+    <tr><td>14</td><td>projet-coso-education.csv</td><td>241 microprojets COSO (tabulaire)</td><td>COSO/MEPS</td><td>244</td></tr>
+    <tr><td>15</td><td>projet-coso-education.geojson</td><td>241 projets COSO géolocalisés</td><td>COSO/MEPS</td><td>241 features</td></tr>
+    <tr><td>16</td><td>education-togo-banque-mondiale.csv</td><td>200+ indicateurs BM 1960-2023</td><td>Banque Mondiale</td><td>17 225</td></tr>
+  </table>
+
+  <div class="alert-box">
+    <strong>Note :</strong> Le fichier 05 (Professeurs) n'est qu'un schéma — les données réelles sont confidentielles et nécessitent une demande auprès du Ministère.
+  </div>
+</div>
+
+<!-- ============ SECTION 3 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s3">
+  <h2><span class="num">3</span>Architecture du dashboard</h2>
+
+  <h3>Stack technologique</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Backend</div>
+      <p style="font-size:9pt;margin:0">Flask (Python) · pandas · geopandas · gunicorn</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Frontend</div>
+      <p style="font-size:9pt;margin:0">pyecharts (ECharts) · folium (Leaflet) · HTML/CSS/JS · Font Awesome</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Assistant IA</div>
+      <p style="font-size:9pt;margin:0">API Gemini (gemini-flash-lite) · agent à outils pandas · streaming SSE</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Déploiement</div>
+      <p style="font-size:9pt;margin:0">Docker · Railway · gunicorn (gthread)</p>
+    </div>
+  </div>
+
+  <h3>Structure des onglets</h3>
+
+  <table>
+    <tr><th>Onglet</th><th>Titre</th><th>Fichiers utilisés</th><th>Objectif</th></tr>
+    <tr>
+      <td><span class="badge badge-vert">1</span></td>
+      <td>Vue d'ensemble nationale</td>
+      <td>06, 07, 16</td>
+      <td>Photographie macro : KPI, entonnoir, budget</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-info">2</span></td>
+      <td>Cartographie des infrastructures</td>
+      <td>01, 02, 03, 04, 14, 15</td>
+      <td>Visualisation territoriale des infrastructures</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-or">3</span></td>
+      <td>Performances &amp; Parité</td>
+      <td>06, 08, 09, 10, 12, 13</td>
+      <td>Disparités régionales, parité filles-garçons, BEPC</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-rouge">4</span></td>
+      <td>Recommandations</td>
+      <td>synthèse des 3 vues</td>
+      <td>Six recommandations chiffrées et priorisées</td>
+    </tr>
+  </table>
+  <p style="font-size:9pt;color:var(--text-mute);margin-top:2px">Note : l'onglet « Recommandations » conserve l'identifiant technique <code>tab=5</code> ; l'ancien onglet « Parité » a été fusionné dans « Performances &amp; Parité ».</p>
+
+  <h3>Pipeline de données</h3>
+  <p>Le frontend Flask lit directement les 16 fichiers sources (CSV/GeoJSON) via des chargeurs pandas mis en cache par onglet (module <code>modules_visu</code>). Chaque onglet possède son propre module de préparation (<code>onglet1</code> à <code>onglet4</code>) qui filtre, agrège et met en forme les données à la volée. Un bouton « Actualiser les données » permet de retélécharger les fichiers depuis opendata.gouv.tg et de purger les caches.</p>
+
+  <div class="card" style="font-size:9pt;font-family:monospace;line-height:1.5">
+    <strong style="color:var(--or)">Chaîne de traitement :</strong><br>
+    CSV / GeoJSON bruts (dossier data/)<br>
+    &nbsp;&nbsp;→ chargeurs pandas mis en cache (_dfs)<br>
+    &nbsp;&nbsp;→ modules par onglet (filtrage · agrégation · score)<br>
+    &nbsp;&nbsp;→ fragments ECharts / cartes folium<br>
+    &nbsp;&nbsp;→ rendu HTML (templates Jinja) + gzip
+  </div>
+</div>
+
+<!-- ============ SECTION 4 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s4">
+  <h2><span class="num">4</span>Méthodologie par onglet</h2>
+
+  <h3>4.1 Onglet 1 — Le système éducatif en chiffres</h3>
+
+  <h4>6 KPI vitaux</h4>
+  <p>Les indicateurs sont issus du fichier <code>06-education-resultats-scolaires.csv</code>, filtrés par <code>secteur = "Total"</code>. Chaque KPI est présenté sous forme de jauge (0-100 %) avec sparkline montrant la tendance sur 10 ans :</p>
+
+  <table>
+    <tr><th>KPI</th><th>Valeur 2022</th><th>Évolution 2013→2022</th><th>Alerte</th></tr>
+    <tr><td>Achèvement primaire</td><td>88,7 %</td><td>↗ +11 pts</td><td><span class="badge badge-vert">🟢 OK</span></td></tr>
+    <tr><td>Achèvement collège</td><td>62,7 %</td><td>↗ +26 pts</td><td><span class="badge badge-or">🟡 Progrès</span></td></tr>
+    <tr><td>Achèvement lycée</td><td>27,2 %</td><td>↗ +11 pts</td><td><span class="badge badge-rouge">🔴 Critique</span></td></tr>
+    <tr><td>Scolarisation préscolaire</td><td>45,5 %</td><td>↗ +30 pts</td><td><span class="badge badge-or">🟡 En retard</span></td></tr>
+    <tr><td>Dépenses éducation</td><td>195,5 Md FCFA</td><td>↗ +81 %</td><td><span class="badge badge-vert">🟢 OK</span></td></tr>
+    <tr><td>Part du budget éducation</td><td>14,7 %</td><td>↘ −4,7 pts (pic 2021: 19,4 %)</td><td><span class="badge badge-rouge">🔴 Alerte</span></td></tr>
+  </table>
+
+  <h4>Entonnoir éducatif</h4>
+  <p>Diagramme de flux (Sankey) illustrant la déperdition scolaire : sur <strong>100 élèves</strong> au primaire, <strong>63</strong> atteignent le collège et seulement <strong>27</strong> achèvent le lycée. Les largeurs sont proportionnelles aux effectifs, avec un dégradé vert → orange → rouge.</p>
+
+  <h4>Scatter budget vs résultats</h4>
+  <p>Corrélation entre la <strong>part du budget alloué à l'éducation</strong> (axe X) et le <strong>taux d'achèvement au collège</strong> (axe Y) pour chaque année de 2013 à 2022. Le nuage de points révèle une corrélation positive (r&nbsp;=&nbsp;0,51), avec un décrochage marqué en 2022 suite à la chute budgétaire.</p>
+
+  <figure class="shot">
+    <img src="assets/onglet1.jpg" alt="Onglet 1 — Vue d'ensemble nationale">
+    <figcaption>Onglet 1 — jauges des 6 KPI, entonnoir éducatif (Sankey), nuage budget↔résultats et tableau d'indicateurs.</figcaption>
+  </figure>
+
+  <h3>4.2 Onglet 2 — Cartographie des infrastructures</h3>
+
+  <p>La carte repose sur <strong>folium (Leaflet)</strong> avec 4 couches superposables :</p>
+  <ol>
+    <li><strong>Établissements</strong> (15 454 points) — colorés par catégorie : primaire (vert), collège (orange), lycée (rouge), jardin maternelle (bleu). Clusterisation automatique avec MarkerCluster.</li>
+    <li><strong>Toilettes</strong> (10 228 points) — icône toilette, couleur par type : latrine sèche (marron), WC (bleu), mixte (vert).</li>
+    <li><strong>Bâtiments</strong> (28 055 polygones) — couleur par fonction (salle de classe, bureau, etc.).</li>
+    <li><strong>Projets COSO</strong> (241 points) — taille du marqueur = coût estimé, couleur par statut d'avancement.</li>
+  </ol>
+
+  <p>Des <strong>filtres latéraux en cascade</strong> (région → préfecture → commune) permettent un drill-down territorial. Les <strong>value-boxes</strong> à droite affichent les compteurs clés : établissements par type, blocs de toilettes (densité 0,66/école), bâtiments scolaires, projets COSO géolocalisés (avec régions et préfectures couvertes) et enseignants du préscolaire.</p>
+
+  <figure class="shot">
+    <img src="assets/onglet2.jpg" alt="Onglet 2 — Cartographie des infrastructures">
+    <figcaption>Onglet 2 — carte thématique par région, value-boxes des infrastructures, barres des types de projets COSO et statut d'avancement.</figcaption>
+  </figure>
+
+  <h3>4.3 Onglet 3 — Performances &amp; Parité</h3>
+  <p>Cet onglet fusionne l'analyse des performances régionales et de la parité (il intègre l'ancien onglet « Écart filles-garçons »). Il présente&nbsp;: les KPI de parité au BEPC (filles 61,1&nbsp;% · garçons 67,0&nbsp;%), une <strong>matrice région × indicateur</strong>, les courbes d'évolution par région, les <strong>courbes filles/garçons</strong> avec bande d'écart, une <strong>carte de l'écart au BEPC</strong> par région, et le <strong>classement par score composite</strong> de vulnérabilité.</p>
+
+  <figure class="shot">
+    <img src="assets/onglet3.jpg" alt="Onglet 3 — Performances et Parité">
+    <figcaption>Onglet 3 — KPI de parité, matrice comparative des régions, évolution des indicateurs et carte de l'écart filles-garçons au BEPC.</figcaption>
+  </figure>
+
+  <h3>4.4 Onglet 4 — Recommandations</h3>
+  <p>Synthèse actionnable des trois vues précédentes&nbsp;: <strong>six recommandations chiffrées</strong>, chacune structurée en <em>constat</em> (fondé sur les données), <em>actions recommandées</em> et <em>indicateur de suivi</em>. Elles sont hiérarchisées par niveau de priorité (agir maintenant / structurer / consolider) et signalées par un code couleur.</p>
+
+  <figure class="shot">
+    <img src="assets/onglet5.jpg" alt="Onglet 4 — Recommandations">
+    <figcaption>Onglet Recommandations — six cartes priorisées (constat · actions · indicateur de suivi), tirées de l'analyse.</figcaption>
+  </figure>
+
+  <h3>4.5 Assistant IA conversationnel</h3>
+  <p>Un assistant accessible depuis tous les onglets répond en <strong>langage naturel</strong> aux questions sur les données. Il ne récite rien&nbsp;: un agent route la question, exécute du code <strong>pandas</strong> sur les fichiers sources, puis rédige une réponse chiffrée. Les réponses s'affichent en <strong>streaming</strong> (statuts en direct puis révélation progressive du texte), avec tableaux et graphiques générés à la volée.</p>
+
+  <figure class="shot small">
+    <img src="assets/chat.jpg" alt="Assistant IA">
+    <figcaption>Assistant IA — réponse calculée sur les données, avec source et question d'ouverture.</figcaption>
+  </figure>
+</div>
+
+<!-- ============ SECTION 5 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s5">
+  <h2><span class="num">5</span>Indicateurs et métiques clés</h2>
+
+  <h3>5.1 Indicateurs nationaux (fichier 06)</h3>
+  <p>Le fichier central contient 6 colonnes : <code>indicateurs</code>, <code>niveau</code>, <code>secteur</code>, <code>Unit</code>, <code>Date</code>, <code>Value</code>. Il couvre 10 années (2013-2022) pour 4 niveaux scolaires (primaire, collège, lycée, préscolaire) et 3 secteurs (total, public, privé).</p>
+
+  <table>
+    <tr><th>Indicateur</th><th>Unité</th><th>Niveaux disponibles</th><th>Période</th></tr>
+    <tr><td>Taux d'achèvement / diplomation</td><td>%</td><td>Primaire, Collège, Lycée</td><td>2013-2022</td></tr>
+    <tr><td>Taux de scolarisation</td><td>%</td><td>Jardins d'enfants, Primaire, Collège, Lycée</td><td>2013-2022</td></tr>
+    <tr><td>Dépenses annuelles d'éducation</td><td>Milliards FCFA</td><td>National</td><td>2013-2018-2022</td></tr>
+    <tr><td>Part du budget alloué à l'éducation</td><td>%</td><td>National</td><td>2013-2022</td></tr>
+  </table>
+
+  <h3>5.2 Indicateurs régionaux</h3>
+  <p>Trois fichiers régionaux partagent le format <code>région</code>, <code>sexe</code>, <code>Date</code>, <code>Value</code> :</p>
+  <ul>
+    <li><strong>08 — Taux de promotion primaire</strong> (2014-2019, 6 régions + Togo)</li>
+    <li><strong>09 — Taux d'admission au BEPC</strong> (2011-2022, 7 régions + Togo, par sexe)</li>
+    <li><strong>10 — Taux de transition primaire→secondaire</strong> (2014-2022, 7 régions + Togo)</li>
+  </ul>
+
+  <div class="alert-box">
+    <strong>Attention :</strong> Le fichier 08 s'arrête en 2019. La promotion primaire n'est donc pas disponible pour 2022. Le dashboard mentionne systématiquement l'année de référence.
+  </div>
+
+  <h3>5.3 Indicateurs d'infrastructure</h3>
+  <table>
+    <tr><th>Métrique</th><th>Valeur</th><th>Source</th></tr>
+    <tr><td>Établissements scolaires</td><td>15 454</td><td>Fichier 01</td></tr>
+    <tr><td>Toilettes scolaires</td><td>10 228</td><td>Fichier 02</td></tr>
+    <tr><td>Ratio toilettes / écoles</td><td>0,66</td><td>01 ÷ 02</td></tr>
+    <tr><td>Bâtiments</td><td>28 055</td><td>Fichier 03</td></tr>
+    <tr><td>Bibliothèques</td><td>11</td><td>Fichier 04</td></tr>
+    <tr><td>Projets COSO</td><td>241</td><td>Fichier 14</td></tr>
+    <tr><td>Salles de classe construites (COSO)</td><td>385</td><td>Fichier 14</td></tr>
+    <tr><td>Blocs latrines (COSO)</td><td>337</td><td>Fichier 14</td></tr>
+    <tr><td>Coût total estimé (COSO)</td><td>4,44 milliards FCFA</td><td>Fichier 14</td></tr>
+    <tr><td>Avancement moyen COSO</td><td>32,3 %</td><td>Fichier 14</td></tr>
+    <tr><td>Enseignants préscolaire</td><td>23 406 (91,8 % femmes)</td><td>Fichier 13</td></tr>
+  </table>
+</div>
+
+<!-- ============ SECTION 6 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s6">
+  <h2><span class="num">6</span>Score composite de vulnerabilité</h2>
+
+  <h3>Construction du score</h3>
+  <p>Le score composite de vulnérabilité éducative classe les 6 régions du Togo selon une moyenne pondérée de 5 indicateurs :</p>
+
+  <table>
+    <tr><th>Indicateur</th><th>Pondération</th><th>Justification</th></tr>
+    <tr><td>Taux de transition primaire→secondaire</td><td>25 %</td><td>Mesure la rétention du système après le primaire</td></tr>
+    <tr><td>Taux d'admission au BEPC</td><td>25 %</td><td>Indicateur de qualité et d'équité au niveau collège</td></tr>
+    <tr><td>Taux de promotion primaire</td><td>20 %</td><td>Efficacité interne du cycle primaire</td></tr>
+    <tr><td>Scolarisation au collège</td><td>15 %</td><td>Couverture du cycle secondaire inférieur</td></tr>
+    <tr><td>Achèvement au collège</td><td>15 %</td><td>Capacité à mener les élèves jusqu'au diplôme</td></tr>
+  </table>
+
+  <p>Le score est calculé comme suit :</p>
+  <div class="card" style="font-family:monospace;font-size:9.5pt">
+    Score = Transition × 0,25 + BEPC × 0,25 + Promotion × 0,20 + Scolarisation × 0,15 + Achèvement × 0,15
+  </div>
+
+  <p style="font-size:9pt;color:var(--text-mute);margin-top:2px">Le score est renormalisé sur les composantes disponibles&nbsp;: le taux de promotion primaire s'arrêtant en 2019, il est neutralisé pour 2022 sans fausser le classement. Une région dépourvue de toute composante régionale (ex. Plateaux après sa scission 2022) est affichée « N/D » plutôt que par un chiffre trompeur.</p>
+
+  <h3>Classement 2022</h3>
+  <table>
+    <tr><th>Rang</th><th>Région</th><th>Score /100</th><th>BEPC 2022</th><th>Priorité</th></tr>
+    <tr><td>1</td><td>Savanes</td><td class="badge badge-rouge">62,4</td><td>48,9 %</td><td>🔴 URGENT</td></tr>
+    <tr><td>2</td><td>Lomé-Golfe</td><td class="badge badge-or">70,2</td><td>54,7 %</td><td>🟠 À surveiller</td></tr>
+    <tr><td>3</td><td>Centrale</td><td class="badge badge-or">70,3</td><td>65,8 %</td><td>🟠 À surveiller</td></tr>
+    <tr><td>4</td><td>Maritime</td><td class="badge badge-vert">73,7</td><td>77,2 %</td><td>🟢 Renforcement</td></tr>
+    <tr><td>5</td><td>Kara</td><td class="badge badge-vert">76,7</td><td>80,8 %</td><td>🟢 Maintien</td></tr>
+    <tr><td>—</td><td>Plateaux</td><td class="badge badge-info">N/D</td><td>N/D</td><td>Scission 2022</td></tr>
+  </table>
+  <div class="alert-box">
+    <strong>Lecture :</strong> les <strong>Savanes</strong> ressortent nettement comme la région la plus vulnérable (62,4/100), avec le plus faible taux d'admission au BEPC (48,9 %, soit 32 points sous Kara). C'est la priorité d'intervention n°1.
+  </div>
+</div>
+
+<!-- ============ SECTION 7 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s7">
+  <h2><span class="num">7</span>Assistant IA conversationnel</h2>
+  <p>Le dashboard embarque un assistant qui répond en langage naturel aux questions sur les données. Il ne s'appuie sur aucune réponse pré-écrite&nbsp;: c'est un <strong>agent à outils</strong> qui calcule ses réponses en direct sur les fichiers sources.</p>
+
+  <h3>7.1 Architecture de l'agent</h3>
+  <p>Le modèle utilisé est <strong>Gemini flash-lite</strong> (API Google), avec des modèles de repli en cas d'indisponibilité. À chaque question, l'agent suit un pipeline en trois temps&nbsp;:</p>
+  <table>
+    <tr><th>Étape</th><th>Rôle</th></tr>
+    <tr><td><span class="badge badge-info">Routage</span></td><td>Classe la question&nbsp;: <code>connaissance</code> (définitions, plateforme), <code>bdd</code> (calcul sur données) ou <code>hors_contexte</code>.</td></tr>
+    <tr><td><span class="badge badge-or">Outils</span></td><td>En route <code>bdd</code>, boucle d'appels d'outils jusqu'à obtenir le résultat (protocole JSON, Gemma n'ayant pas de function-calling natif).</td></tr>
+    <tr><td><span class="badge badge-vert">Réponse</span></td><td>Rédige une réponse chiffrée, cite l'année et la source, et pose une question d'ouverture.</td></tr>
+  </table>
+
+  <h3>7.2 Outils et garde-fous</h3>
+  <p>L'agent dispose de cinq outils&nbsp;: <code>get_schema</code>, <code>sample_data</code>, <code>find_similar_values</code>, <code>execute_python</code> (pandas en bac à sable) et <code>generer_graphique</code>. Un catalogue YAML des schémas est fourni en contexte pour éviter les pièges de données (lignes d'agrégat, scission Plateaux 2022, toilettes non rattachables). Les garde-fous sont stricts&nbsp;:</p>
+  <ul>
+    <li>Exécution <strong>en lecture seule</strong> (pandas/numpy uniquement, aucun accès fichier, réseau ou système).</li>
+    <li>Tout chiffre doit provenir des outils — <strong>jamais inventé</strong> ni tiré de la mémoire du modèle.</li>
+    <li>Nombre d'itérations plafonné&nbsp;; si un calcul est impossible, l'agent le dit honnêtement plutôt que d'estimer.</li>
+  </ul>
+
+  <h3>7.3 Génération en streaming</h3>
+  <p>La réponse est diffusée en <strong>flux (SSE)</strong>&nbsp;: des statuts en direct informent l'utilisateur pendant le traitement (« Analyse de la question… », « Consultation des données… »), puis le texte se révèle progressivement (effet machine à écrire), avant le rendu final enrichi (tableaux markdown et graphiques ECharts générés à la volée). En cas d'erreur, un repli non-streamé garantit qu'une réponse est toujours servie.</p>
+
+  <div class="alert-box">
+    <strong>Fiabilité vérifiée :</strong> un audit des indicateurs a confirmé que les réponses de l'assistant sont cohérentes avec le tableau de bord (achèvement, BEPC, parité, effectifs), les rares écarts ayant été corrigés dans le catalogue de connaissances.
+  </div>
+</div>
+
+<!-- ============ SECTION 8 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s8">
+  <h2><span class="num">8</span>Pièges et limitations</h2>
+
+  <p>Cette section documente les limitations identifiées lors de l'analyse des données. Elles sont essentielles pour une interprétation correcte des résultats.</p>
+
+  <h3>8.1 Problèmes de données</h3>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-alert">CRITIQUE</span> Données enseignants (fichier 05)</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Le fichier 05 ne contient que le schéma — les données réelles (diplômes, contrats, nombre d'enseignants par école) sont confidentielles et inaccessibles. Le dashboard ne peut donc pas présenter d'indicateurs de qualité d'encadrement.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-alert">CRITIQUE</span> Triple comptage fichier 13 (préscolaire)</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Le fichier 13 est hiérarchique à 3 niveaux : T.Général (7 802) = somme des T.R.* (7 802) = somme des inspections locales (7 802). Additionner toutes les lignes donne 23 406 (soit 3× le vrai total). <strong>Règle :</strong> pour le total national, n'utiliser que la ligne T.Général. Pour un classement d'inspections, exclure T.Général et les lignes T.R.*.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-or">ATTENTION</span> Coordonnées COSO manquantes</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Dans le GeoJSON (fichier 15), seulement 86 projets sur 241 ont des coordonnées valides. 68 sont à [0,0] et 87 n'ont pas de géométrie. Le dashboard filtre automatiquement les coordonnées nulles et mentionne le nombre de projets effectivement géolocalisés.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-or">ATTENTION</span> Divergence Maritimes / Lomé-Golfe</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Dans le fichier 01, « Maritime » inclut Lomé (43 % des écoles). Dans les fichiers régionaux 08/09/10, « Maritime » et « Lomé-Golfe » sont distincts. Toute jointure doit tenir compte de ce découpage différent.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-or">ATTENTION</span> Données promotion primaire arrêtées en 2019</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Le fichier 08 ne couvre que 2014-2019. Le dashboard indique systématiquement la dernière année disponible et n'extrapole pas les données manquantes.</p>
+  </div>
+
+  <h3>8.2 Limitations méthodologiques</h3>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-info">LIMITE</span> Corrélation ≠ causalité (scatter budget vs résultats)</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">La corrélation visualisée entre part du budget et achèvement ne prouve pas un lien causal direct. D'autres facteurs (qualité des enseignants, programmes, contexte socio-économique) influencent les résultats.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-info">LIMITE</span> Couverture en toilettes non rattachable aux écoles</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Le nom d'établissement est absent pour ~86 % des points de toilettes, et leurs coordonnées ne coïncident pas avec celles des écoles. Il est donc impossible de calculer un « % d'écoles équipées » fiable&nbsp;: on raisonne en nombre de blocs (10 228) et en densité (0,66 bloc/école).</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-info">LIMITE</span> Score composite — pondération arbitraire</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Les pondérations du score composite (25/25/20/15/15) sont basées sur le jugement d'experts et non sur une optimisation statistique. Elles peuvent être ajustées selon les priorités politiques.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="tag tag-info">LIMITE</span> Absence de données élèves/enseignants par école</div>
+    <p style="margin:6px 0 0;font-size:9.5pt">Malgré un schéma annonçant 168 colonnes, l'export réel du fichier 01 ne contient que 15 colonnes. Les effectifs élèves et enseignants par établissement ne sont pas disponibles.</p>
+  </div>
+</div>
+
+<!-- ============ SECTION 9 ============ -->
+<div class="page-break"></div>
+<div class="content-wrap" id="s9">
+  <h2><span class="num">9</span>Références et sources externes</h2>
+
+  <h3>Sources institutionnelles</h3>
+  <ul>
+    <li><strong>INSEED</strong> — Institut National de la Statistique et des Études Économiques et Démographiques du Togo (<code>inseed.tg</code>)</li>
+    <li><strong>MEPS</strong> — Ministère de l'Enseignement Primaire et Secondaire du Togo</li>
+    <li><strong>Banque Mondiale</strong> — Indicateurs de développement mondial (WDI) — <code>databank.worldbank.org</code></li>
+    <li><strong>UNESCO</strong> — Institut de Statistique de l'UNESCO (ISU) — ODD4 data — <code>sdg4-data.uis.unesco.org</code></li>
+    <li><strong>COSO</strong> — Projets d'infrastructures scolaires — données ouvertes</li>
+    <li><strong>Open Data Togo</strong> — <code>opendata.gouv.tg</code></li>
+  </ul>
+
+  <h3>Références méthodologiques</h3>
+  <ul>
+    <li>UNESCO (2023). <em>Global Education Monitoring Report 2023: Technology in Education</em></li>
+    <li>Banque Mondiale (2023). <em>Learning Poverty in Sub-Saharan Africa</em></li>
+    <li>ODD4 — Objectif de Développement Durable 4 : « Assurer une éducation inclusive et équitable de qualité et promouvoir des opportunités d'apprentissage tout au long de la vie pour tous »</li>
+  </ul>
+
+  <h3>Documents du projet</h3>
+  <ul>
+    <li><code>SPEC_DASHBOARD.md</code> — Spécification détaillée des onglets</li>
+    <li><code>GUIDE_DONNEES.md</code> — Guide des données : quel fichier pour quel élément</li>
+    <li><code>RELATIONS.md</code> — Relations entre fichiers et schéma en étoile proposé</li>
+    <li><code>PLAN_PRESENTATION.md</code> — Plan stratégique de présentation</li>
+    <li><code>data/</code> — 16 fichiers sources (CSV/GeoJSON) lus directement par le frontend</li>
+  </ul>
+
+  <div class="footer-note">
+    Document généré le 20 juillet 2026 · Dashboard Éducation Togo v2.1 · Défi Togo AI Lab<br>
+    Contact : <a href="#" style="color:var(--accent)">projet@education-togo.tg</a>
+  </div>
+</div>
+
+</body>
+</html>
