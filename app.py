@@ -783,6 +783,19 @@ def _md_en_html(texte):
     return ''.join(sortie)
 
 
+def _vider_caches():
+    """Purge les caches en mémoire après un rafraîchissement des données,
+    pour que le rechargement de page serve bien les nouveaux CSV."""
+    with _lock:
+        _data.clear()
+    for fn in (_tab1_context, _territoires, _tab2_context, _tab3_context,
+               _carte_html, _carte_thema_html, _carte_bepc_html):
+        try:
+            fn.cache_clear()
+        except Exception:  # noqa: BLE001 — purge best-effort
+            pass
+
+
 @app.route('/api/refresh-data')
 def api_refresh_data():
     from scripts import update_data
@@ -790,6 +803,9 @@ def api_refresh_data():
         yield 'data: {"type":"start","total":' + str(len(update_data.FILES)) + '}\n\n'
         for evt in update_data.run_stream():
             yield 'data: ' + json.dumps(evt, ensure_ascii=False) + '\n\n'
+        # Données réécrites sur disque : on vide les caches pour que le
+        # rechargement côté client reconstruise tout à partir des nouveaux CSV.
+        _vider_caches()
     return Response(stream(), mimetype='text/event-stream',
                     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 

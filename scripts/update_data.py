@@ -30,14 +30,27 @@ def download(url: str, dest: str) -> tuple[int, int, int]:
     resp = urllib.request.urlopen(req, timeout=120)
     size = 0
     chunk_count = 0
-    with open(dest, 'wb') as f:
-        while True:
-            chunk = resp.read(65536)
-            if not chunk:
-                break
-            f.write(chunk)
-            size += len(chunk)
-            chunk_count += 1
+    # Écriture atomique : on télécharge dans un fichier temporaire puis on le
+    # bascule d'un coup vers le nom final. Ainsi un téléchargement interrompu
+    # ne laisse JAMAIS un CSV vide/partiel à la place du fichier valide
+    # (cause de l'EmptyDataError qui plantait le serveur).
+    tmp = dest + '.tmp'
+    try:
+        with open(tmp, 'wb') as f:
+            while True:
+                chunk = resp.read(65536)
+                if not chunk:
+                    break
+                f.write(chunk)
+                size += len(chunk)
+                chunk_count += 1
+        if size == 0:
+            raise ValueError('réponse vide (0 octet)')
+        os.replace(tmp, dest)
+    except Exception:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
     return resp.status, size, chunk_count
 
 

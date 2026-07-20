@@ -8,6 +8,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=user:user app.py ./
+COPY --chown=user:user scripts scripts/
 COPY --chown=user:user modules_visu modules_visu/
 COPY --chown=user:user agent_ia agent_ia/
 COPY --chown=user:user connaissance_ia connaissance_ia/
