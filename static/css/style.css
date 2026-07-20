@@ -149,6 +149,13 @@ body.sidebar-collapsed .sidebar { width: 0; padding: 18px 0; }
 .btn-pdf i { color: var(--or); font-size: 14px; flex-shrink: 0; }
 .btn-pdf:hover { background: var(--or); border-color: var(--or); color: #1A202C; }
 .btn-pdf:hover i { color: #1A202C; }
+/* Variante « rapport d'analyse » : bouton plein, mis en avant */
+.btn-pdf-rapport {
+  margin-top: 8px; color: #fff;
+  background: rgba(255,206,0,0.14); border-color: rgba(255,206,0,0.45);
+}
+.btn-pdf-rapport i { color: var(--or); }
+.btn-pdf-rapport:hover { background: var(--or); border-color: var(--or); color: #1A202C; }
 
 /* ===== MAIN + TABS ===== */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
