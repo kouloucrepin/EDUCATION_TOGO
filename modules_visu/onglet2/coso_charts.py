@@ -36,7 +36,14 @@ def coso_type_bar_html(type_rows):
             yaxis_opts=opts.AxisOpts(axislabel_opts=opts.LabelOpts(
                 font_size=10,
             )),
-            tooltip_opts=opts.TooltipOpts(trigger='axis'),
+            tooltip_opts=opts.TooltipOpts(trigger='axis',
+                formatter=JsCode(
+                    """function(params) {
+                        return '<b>' + params[0].axisValue + '</b><br/>' +
+                               'Projets : <b>' + (Array.isArray(params[0].value) ? params[0].value[1] : params[0].value) + '</b>';
+                    }"""
+                ),
+            ),
             legend_opts=opts.LegendOpts(is_show=False),
         )
     )
@@ -57,7 +64,13 @@ def coso_status_pie_html(status_rows):
         .set_global_opts(
             # Pas de titre interne : la card du dashboard porte déjà le titre
             tooltip_opts=opts.TooltipOpts(trigger='item',
-                                          formatter='{b}: {c} ({d}%)'),
+                formatter=JsCode(
+                    """function(p) {
+                        return '<b>' + p.name + '</b><br/>' +
+                               'Projets : <b>' + p.value + '</b> (' + p.percent + '%)';
+                    }"""
+                ),
+            ),
             legend_opts=opts.LegendOpts(pos_bottom=0, item_width=12, item_height=12),
         )
     )

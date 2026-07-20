@@ -1,5 +1,6 @@
 from pyecharts.charts import Radar
 from pyecharts import options as opts
+from pyecharts.commons.utils import JsCode
 from .config import COULEURS_REGIONS, REGIONS, COULEURS_REGIONS_DISTINCTES as COULEURS_RADAR
 from .data import get_heatmap_data, get_national_indicators
 
@@ -68,7 +69,19 @@ def radar_comparison_html(dfs, region_a='Kara', region_b='Savanes',
 
     radar.set_global_opts(
         # Pas de titre interne : la card du dashboard porte déjà le titre
-        tooltip_opts=opts.TooltipOpts(trigger='item'),
+        tooltip_opts=opts.TooltipOpts(trigger='item',
+            formatter=JsCode(
+                """function(p) {
+                    var s = '<b>' + p.seriesName + '</b><br/>';
+                    var vals = p.value;
+                    var axes = ['Promotion primaire','Transition P\\u2192S','Admission BEPC','Scolarisation coll\\u00e8ge','Ach\\u00e8vement coll\\u00e8ge'];
+                    for (var i = 0; i < axes.length && i < vals.length; i++) {
+                        s += axes[i] + ' : <b>' + vals[i] + '%</b><br/>';
+                    }
+                    return s;
+                }"""
+            ),
+        ),
         legend_opts=opts.LegendOpts(pos_bottom=0, item_width=14, item_height=9,
                                     textstyle_opts=opts.TextStyleOpts(font_size=10)),
     )

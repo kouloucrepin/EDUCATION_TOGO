@@ -1,5 +1,6 @@
 from pyecharts.charts import Bar, Sankey
 from pyecharts import options as opts
+from pyecharts.commons.utils import JsCode
 
 # Couleurs de l'entonnoir : un ton par niveau (palette Togo)
 COULEURS_NIVEAUX = {
@@ -52,7 +53,7 @@ def sankey_funnel_chart(data, annee):
             # Pas de titre interne : la card du dashboard porte déjà le titre
             tooltip_opts=opts.TooltipOpts(
                 trigger='item',
-                formatter='{b}: {c}%',
+                formatter='{b}<br/>{c}%',
             ),
         )
     )
@@ -63,7 +64,7 @@ def sankey_funnel_html(data, annee):
     chart = sankey_funnel_chart(data, annee)
     if chart is None:
         return '<p style="color:red">Données insuffisantes pour l\'entonnoir</p>'
-    return f'<div id="sankey_funnel">{chart.render_embed()}</div>'
+    return chart.render_embed()
 
 
 def funnel_evolution_bar_chart(evo):
@@ -88,7 +89,19 @@ def funnel_evolution_bar_chart(evo):
             name='%', name_location='end',
             axislabel_opts=opts.LabelOpts(font_size=11),
         ),
-        tooltip_opts=opts.TooltipOpts(trigger='axis', axis_pointer_type='shadow'),
+        tooltip_opts=opts.TooltipOpts(trigger='axis', axis_pointer_type='shadow',
+            formatter=JsCode(
+                """function(params) {
+                    var s = '<b>' + params[0].axisValue + '</b><br/>';
+                    for (var i = 0; i < params.length; i++) {
+                        var v = Array.isArray(params[i].value) ? params[i].value[1] : params[i].value;
+                        if (v === null || v === undefined) continue;
+                        s += params[i].marker + ' ' + params[i].seriesName + ': <b>' + v + '%</b><br/>';
+                    }
+                    return s;
+                }"""
+            ),
+        ),
     )
     bar.options['grid'] = {'left': '2%', 'right': '2%', 'top': 36, 'bottom': 8, 'containLabel': True}
     return bar
@@ -98,4 +111,4 @@ def funnel_evolution_bar_html(evo):
     chart = funnel_evolution_bar_chart(evo)
     if chart is None:
         return '<p style="color:red">Données insuffisantes pour l\'évolution de l\'entonnoir</p>'
-    return f'<div id="funnel_evolution">{chart.render_embed()}</div>'
+    return chart.render_embed()

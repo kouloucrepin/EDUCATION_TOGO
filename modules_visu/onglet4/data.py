@@ -51,6 +51,43 @@ def get_bepc_by_region_sexe(dfs, annee=2022):
     return rows
 
 
+def get_bepc_table_data(dfs):
+    """Tableau BEPC par région × année × sexe avec tendance linéaire.
+    Retourne une liste de dicts {region, sexe, annees: {annee: valeur_formattee}, trend}."""
+    df = dfs['bepc'].copy()
+    df['Date'] = pd.to_numeric(df['Date'], errors='coerce')
+    df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+    df = df.dropna(subset=['Date', 'Value'])
+    regions = [r for r in REGIONS_09 if r in df['région'].values]
+    sexes = ['Féminin', 'Masculin', 'Total']
+    rows = []
+    for r in regions:
+        for s in sexes:
+            sub = df[(df['région'] == r) & (df['sexe'] == s)].sort_values('Date')
+            if sub.empty:
+                continue
+            annees = {}
+            valeurs = []
+            for _, row in sub.iterrows():
+                a = int(row['Date'])
+                v = round(row['Value'], 1)
+                annees[a] = f'{v}%'
+                valeurs.append((a, v))
+            # Tendance : pente linéaire sur les valeurs disponibles
+            trend = None
+            if len(valeurs) >= 2:
+                xs = [v[0] for v in valeurs]
+                ys = [v[1] for v in valeurs]
+                n = len(xs)
+                sx = sum(xs); sy = sum(ys)
+                sxx = sum(x * x for x in xs)
+                sxy = sum(x * y for x, y in zip(xs, ys))
+                slope = (n * sxy - sx * sy) / (n * sxx - sx * sx) if n * sxx - sx * sx != 0 else 0
+                trend = round(slope, 1)
+            rows.append({'region': r, 'sexe': s, 'annees': annees, 'trend': trend})
+    return rows
+
+
 def get_ecart_regional(dfs, annee=2022):
     rows = get_bepc_by_region_sexe(dfs, annee=annee)
     for r in rows:

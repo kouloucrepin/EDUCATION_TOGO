@@ -39,7 +39,17 @@ def ecart_choropleth_html(dfs, annee=2022):
                 axislabel_opts=opts.LabelOpts(font_size=10)),
             tooltip_opts=opts.TooltipOpts(
                 trigger='item',
-                formatter="{b}<br/>\u00c9cart: {c} pts"),
+                formatter=JsCode(
+                    """function(p) {
+                        var v = p.data;
+                        var sens = v > 0 ? 'en d\\u00e9faveur des filles' : 'en faveur des filles';
+                        var couleur = v > 5 ? '#ef4444' : v > 2 ? '#eab308' : '#22c55e';
+                        return '<b>' + p.name + '</b><br/>' +
+                               '\\u00c9cart M-F : <b style=\"color:' + couleur + '\">' + (v > 0 ? '+' : '') + v + ' pts</b><br/>' +
+                               '<span style=\"color:#718096;font-size:11px\">' + sens + '</span>';
+                    }"""
+                ),
+            ),
             legend_opts=opts.LegendOpts(pos_bottom=0),
         )
     )

@@ -1,5 +1,6 @@
 from pyecharts.charts import Bar
 from pyecharts import options as opts
+from pyecharts.commons.utils import JsCode
 
 from .config import REGIONS
 from .data import get_ranking_data
@@ -81,7 +82,14 @@ def ranking_bar_html(dfs, annee=None, sexe='Total'):
             yaxis_opts=opts.AxisOpts(
                 min_=0, max_=100,
                 splitline_opts=opts.SplitLineOpts(is_show=True)),
-            tooltip_opts=opts.TooltipOpts(trigger='axis'),
+            tooltip_opts=opts.TooltipOpts(trigger='axis',
+                formatter=JsCode(
+                    """function(params) {
+                        return '<b>' + params[0].axisValue + '</b><br/>' +
+                               'Score composite : <b>' + (Array.isArray(params[0].value) ? params[0].value[1] : params[0].value) + '</b>/100';
+                    }"""
+                ),
+            ),
             legend_opts=opts.LegendOpts(is_show=False),
         )
     )

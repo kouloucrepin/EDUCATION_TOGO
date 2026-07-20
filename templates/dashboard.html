@@ -142,6 +142,16 @@
     </form>
 
     <div class="sidebar-sources">
+      <button class="btn-refresh" onclick="refreshData()" title="Télécharger les dernières données depuis opendata.gouv.tg">
+        <i class="fas fa-sync-alt"></i> Actualiser les données
+      </button>
+      <div class="refresh-progress" id="refreshProgress">
+        <div class="refresh-bar-track"><div class="refresh-bar-fill" id="refreshBar"></div></div>
+        <span class="refresh-label" id="refreshLabel"></span>
+      </div>
+      {% if derniere_maj %}
+      <div class="last-update"><i class="fas fa-clock"></i> Dernière mise à jour : {{ derniere_maj }}</div>
+      {% endif %}
       <div class="section-label">{{ t.sources }}</div>
       <div class="sidebar-note">
         INSEED · MEPS · Banque Mondiale · UNESCO · Projets COSO<br>
@@ -175,6 +185,10 @@
         {{ kpi_html | safe }}
       </div>
 
+      <div class="chart-row-desc">
+        <div><i class="fas fa-chevron-right"></i> &Agrave; gauche l'entonnoir r&eacute;v&egrave;le le taux de perte d'&eacute;l&egrave;ves &agrave; chaque cycle (primaire &rarr; coll&egrave;ge &rarr; lyc&eacute;e)&nbsp;; &agrave; droite le budget vs r&eacute;sultats montre si l'investissement public am&eacute;liore les performances.</div>
+        <div class="row-decision"><strong>D&eacute;cision&nbsp;:</strong> cibler le coll&egrave;ge, maillon faible, et sanctuariser le budget &eacute;ducation.</div>
+      </div>
       <div class="chart-row">
         <div class="chart-card">
           <h3><i class="fas fa-filter"></i> {{ t.c_entonnoir }} <span class="h3-filtre" id="funTitre">({{ annee }})</span></h3>
@@ -202,6 +216,10 @@
         </div>
       </div>
 
+      <div class="chart-row-desc">
+        <div><i class="fas fa-chevron-right"></i> &Agrave; gauche le graphique par niveau montre quel cycle progresse ou stagne (primaire, coll&egrave;ge, lyc&eacute;e)&nbsp;; &agrave; droite la carte secteur r&eacute;v&egrave;le si la croissance est port&eacute;e par le public ou le priv&eacute;.</div>
+        <div class="row-decision"><strong>D&eacute;cision&nbsp;:</strong> prioriser le secondaire inf&eacute;rieur et ajuster la r&eacute;partition public/priv&eacute;.</div>
+      </div>
       <div class="chart-row">
         <div class="chart-card">
           <h3><i class="fas fa-chart-line"></i> {{ t.c_evolution }} <span id="evoTitre">{{ t.evo_niveau }}</span></h3>
@@ -326,6 +344,10 @@
         </div>
       </div>
 
+      <div class="chart-row-desc">
+        <div><i class="fas fa-chevron-right"></i> &Agrave; gauche les barres montrent quels types d'infrastructures sont priorit&eacute;s (salles de classe, latrines...)&nbsp;; &agrave; droite le camembert indique combien de projets sont en pr&eacute;vision, construction ou achev&eacute;s.</div>
+        <div class="row-decision"><strong>D&eacute;cision&nbsp;:</strong> acc&eacute;l&eacute;rer le bouclage des projets en r&eacute;ception provisoire et &eacute;quilibrer les types par r&eacute;gion.</div>
+      </div>
       <div class="chart-row">
         <div class="chart-card">
           <h3><i class="fas fa-chart-bar"></i> {{ t.c_types_coso }} <span class="h3-filtre">({{ territoire_label }}, {{ t.geo_paren }})</span></h3>
@@ -370,12 +392,16 @@
           <div class="ref">{{ t.etait }} {{ kpis.garcons_2011 }}% {{ t.en_2011 }}</div>
         </div>
         <div class="kpi4-card">
-          <div class="lbl"><i class="fas fa-calculator"></i> Moyenne BEPC</div>
+          <div class="lbl"><i class="fas fa-calculator"></i> {{ t.k_moyenne }}</div>
           <div class="val" style="color:#006A4E">{{ kpis.moyenne if kpis.moyenne is not none else 'N/D' }}%</div>
           <div class="ref">(filles + garçons) / 2</div>
         </div>
       </div>
 
+      <div class="chart-row-desc">
+        <div><i class="fas fa-chevron-right"></i> &Agrave; gauche la matrice compare toutes les r&eacute;gions pour identifier les retardataires (Savanes d&eacute;croche)&nbsp;; &agrave; droite les courbes par r&eacute;gion montrent la tendance de chaque indicateur dans le temps.</div>
+        <div class="row-decision"><strong>D&eacute;cision&nbsp;:</strong> un plan d'urgence pour les Savanes et un suivi cibl&eacute; par indicateur prioritaire.</div>
+      </div>
       <div class="chart-row">
         <div class="chart-card">
           <h3><i class="fas fa-th"></i> {{ t.c_matrice }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }} · {{ sexe }})</span></h3>
@@ -384,21 +410,43 @@
         </div>
         <div class="chart-card">
           <h3><i class="fas fa-chart-line"></i> {{ t.c_transition }} <span class="h3-filtre">(2014-2022 · {{ sexe }})</span></h3>
-          {{ evol_transition | safe }}
+          <div style="margin-bottom:6px;">
+            <select id="evol-indicateur" class="mini-select" style="min-width:280px;" onchange="switchEvol(this.value)">
+              <option value="transition"{% if indicateur == 'transition' %} selected{% endif %}>Indicateur : Taux de transition Primaire → Secondaire</option>
+              <option value="bepc"{% if indicateur == 'bepc' %} selected{% endif %}>Indicateur : Taux d'admission au BEPC</option>
+              <option value="promotion"{% if indicateur == 'promotion' %} selected{% endif %}>Indicateur : Taux de promotion au Primaire</option>
+            </select>
+          </div>
+          <div id="evol-container">
+            {% for key in ['transition', 'bepc', 'promotion'] %}
+            <div id="evol-chart-{{ key }}" class="evol-chart"{% if key != indicateur %} style="display:none"{% endif %}>{{ evol_charts[key] | safe }}</div>
+            {% endfor %}
+          </div>
           {{ controls(t.i_transition) }}
         </div>
       </div>
 
-      <div class="chart-row">
+      <div class="chart-row-desc">
+        <div><i class="fas fa-chevron-right"></i> &Agrave; gauche les courbes filles/gar&ccedil;ons avec la bande d'&eacute;cart rose montrent si la parit&eacute; progresse&nbsp;; &agrave; droite la carte choropl&egrave;the localise les r&eacute;gions les plus in&eacute;galitaires.</div>
+        <div class="row-decision"><strong>D&eacute;cision&nbsp;:</strong> d&eacute;ployer des programmes de soutien aux filles dans les Savanes et Plateaux Ouest, o&ugrave; l'&eacute;cart d&eacute;passe 9 points.</div>
+      </div>
+      <div class="chart-row" style="grid-template-columns: 3fr 1.2fr">
         <div class="chart-card">
           <h3><i class="fas fa-chart-line"></i> {{ t.c_bepc }} <span class="h3-filtre">({{ region_bepc }}, 2011-2022)</span></h3>
-          {{ bepc_lines | safe }}
+          <div class="card-tabs" style="margin-top:-4px;margin-bottom:6px">
+            <div class="seg seg-mode">
+              <a class="active" href="#" onclick="switchBepcTab(this,'chart');return false"><i class="fas fa-chart-line"></i> {{ t.graphique }}</a>
+              <a href="#" onclick="switchBepcTab(this,'table');return false"><i class="fas fa-table"></i> {{ t.tableau_lbl }}</a>
+            </div>
+          </div>
+          <div id="bepc-chart" class="bepc-tab">{{ bepc_lines | safe }}</div>
+          <div id="bepc-table" class="bepc-tab" style="display:none">{{ bepc_table | safe }}</div>
           {{ controls(t.i_bepc) }}
         </div>
         <div class="chart-card">
-          <h3><i class="fas fa-chart-bar"></i> {{ t.c_ecart }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }})</span></h3>
-          {{ ecart_bars | safe }}
-          {{ controls(t.i_ecart) }}
+          <h3><i class="fas fa-map-marked-alt"></i> {{ t.c_ecart }} <span class="h3-filtre">({{ annee if annee else t.derniere_annee }})</span></h3>
+          <iframe class="map-frame" src="{{ url_for('carte_bepc', annee=annee) }}" loading="lazy" title="Carte BEPC par région"></iframe>
+          {{ controls(t.i_ecart, export=False) }}
         </div>
       </div>
 
@@ -479,6 +527,48 @@
 </div>
 
 <script>
+/* ===== Commutateur d'indicateur dans le graphique d'évolution (onglet 3) ===== */
+function switchEvol(key){
+  document.querySelectorAll('.evol-chart').forEach(function(el){ el.style.display = 'none'; });
+  var target = document.getElementById('evol-chart-' + key);
+  if (target) {
+    target.style.display = 'block';
+    var chartDiv = target.querySelector('div[_echarts_instance_]');
+    if (chartDiv) {
+      var inst = echarts.getInstanceByDom(chartDiv);
+      if (inst) setTimeout(function(){ inst.resize(); }, 50);
+    }
+  }
+}
+
+function switchBepcTab(btn, tab){
+  document.querySelectorAll('#bepc-chart, #bepc-table').forEach(function(el){ el.style.display = 'none'; });
+  var target = document.getElementById('bepc-' + tab);
+  if (target) {
+    target.style.display = 'block';
+    if (tab === 'chart') {
+      var chartDiv = target.querySelector('div[_echarts_instance_]');
+      if (chartDiv) {
+        var inst = echarts.getInstanceByDom(chartDiv);
+        if (inst) setTimeout(function(){ inst.resize(); }, 50);
+      }
+    }
+  }
+  btn.closest('.seg-mode').querySelectorAll('a').forEach(function(a){ a.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function filterBepcTable(){
+  var region = document.getElementById('bepc-filter-region').value;
+  var sexe = document.getElementById('bepc-filter-sexe').value;
+  document.querySelectorAll('#bepc-data-table tbody tr').forEach(function(tr){
+    var r = tr.getAttribute('data-region');
+    var s = tr.getAttribute('data-sexe');
+    var show = (region === 'Toutes' || r === region) && (sexe === 'Tous' || s === sexe);
+    tr.style.display = show ? '' : 'none';
+  });
+}
+
 /* ===== Contrôles des cards : insight, agrandir, télécharger ===== */
 function toggleInsight(btn){
   btn.classList.toggle('active');
@@ -924,6 +1014,54 @@ function dlCard(btn){
     a.click();
     URL.revokeObjectURL(a.href);
   }
+}
+
+/* ===== Actualisation des données avec barre de progression ===== */
+function refreshData(){
+  var btn = document.querySelector('.btn-refresh');
+  var prog = document.getElementById('refreshProgress');
+  var bar = document.getElementById('refreshBar');
+  var label = document.getElementById('refreshLabel');
+  btn.style.display = 'none';
+  prog.style.display = 'block';
+  bar.style.width = '0%';
+  label.textContent = 'Connexion...';
+  var es = new EventSource('/api/refresh-data');
+  es.onmessage = function(e){
+    var d = JSON.parse(e.data);
+    if (d.type === 'start') {
+      label.textContent = '0 / ' + d.total;
+    } else if (d.type === 'file') {
+      var pct = Math.round((d.current - 1) / d.total * 100);
+      bar.style.width = Math.max(pct, 3) + '%';
+      if (d.status === 'downloading') {
+        label.textContent = d.file;
+      } else if (d.status === 'ok') {
+        bar.style.width = Math.round(d.current / d.total * 100) + '%';
+        label.textContent = d.file + ' ✓ (' + d.size_mb + ' Mo)';
+      } else if (d.status === 'error') {
+        label.textContent = d.file + ' ✗';
+        bar.style.background = '#EF3340';
+      }
+    } else if (d.type === 'done') {
+      bar.style.width = '100%';
+      if (d.errors && d.errors.length) {
+        label.textContent = d.ok + '/' + d.total + ' — ' + d.errors.length + ' erreur(s)';
+      } else {
+        label.textContent = d.ok + ' fichiers mis à jour ✓';
+      }
+      es.close();
+      setTimeout(function(){ location.reload(); }, 1500);
+    }
+  };
+  es.onerror = function(){
+    label.textContent = 'Échec de connexion';
+    es.close();
+    setTimeout(function(){
+      prog.style.display = 'none';
+      btn.style.display = 'flex';
+    }, 3000);
+  };
 }
 </script>
 </body>

@@ -528,7 +528,14 @@ def bar_thematique_html(rows, indicateur='ecoles', top=25):
                 axislabel_opts=opts.LabelOpts(rotate=45, font_size=9, interval=0)),
             yaxis_opts=opts.AxisOpts(
                 splitline_opts=opts.SplitLineOpts(is_show=True)),
-            tooltip_opts=opts.TooltipOpts(trigger='axis'),
+            tooltip_opts=opts.TooltipOpts(trigger='axis',
+                formatter=JsCode(
+                    """function(params) {
+                        return '<b>' + params[0].axisValue + '</b><br/>' +
+                               'Valeur : <b>' + (Array.isArray(params[0].value) ? params[0].value[1] : params[0].value) + '</b>';
+                    }"""
+                ),
+            ),
             legend_opts=opts.LegendOpts(is_show=False),
         )
     )

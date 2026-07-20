@@ -1,5 +1,6 @@
 from pyecharts.charts import Bar, Pie
 from pyecharts import options as opts
+from pyecharts.commons.utils import JsCode
 from .data import get_prescolaire_data, get_prescolaire_par_inspection, get_prescolaire_matrice
 # Rendu de tableau avec en-tête/pied figés et filtres intégrés (mutualisé avec l'onglet 1)
 from ..onglet1.table import _render_table
@@ -85,7 +86,14 @@ def top_inspections_bar_html(dfs, top=None):
                 splitline_opts=opts.SplitLineOpts(is_show=True)),
             yaxis_opts=opts.AxisOpts(
                 axislabel_opts=opts.LabelOpts(font_size=10, interval=0)),
-            tooltip_opts=opts.TooltipOpts(trigger='axis'),
+            tooltip_opts=opts.TooltipOpts(trigger='axis',
+                formatter=JsCode(
+                    """function(params) {
+                        return '<b>' + params[0].axisValue + '</b><br/>' +
+                               'Enseignants : <b>' + (Array.isArray(params[0].value) ? params[0].value[1] : params[0].value).toLocaleString('fr-FR') + '</b>';
+                    }"""
+                ),
+            ),
             legend_opts=opts.LegendOpts(is_show=False),
         )
     )
